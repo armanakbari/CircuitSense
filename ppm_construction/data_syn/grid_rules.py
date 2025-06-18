@@ -674,6 +674,8 @@ class Circuit:
             raise NotImplementedError
         elif int(self.note[1:]) > 9:
             sorted_branches = sorted(self.branches, key=lambda x: x["order"])
+            vmeas_counter = 0  # Counter to ensure unique voltage measurement names
+            
             for br in sorted_branches:
                 meas_comp_same_direction = br["meas_comp_same_direction"]
                 ms_label_str = "" if br["measure_label"] == -1 else str(int(br["measure_label"]))
@@ -689,13 +691,15 @@ class Circuit:
 
                 if br["type"] == TYPE_SHORT:
                     assert br["measure"] == MEAS_TYPE_CURRENT, f"short circuit should be measured by current, {br}"
-                    vmeas_str = f"VI{ms_label_str}"
+                    vmeas_counter += 1
+                    vmeas_str = f"VI{vmeas_counter}"
                     spice_str += "%s %s %s %s\n" % (vmeas_str, br["n1"], br["n2"], 0)
                 
                 if br["type"] in [TYPE_VOLTAGE_SOURCE, TYPE_CURRENT_SOURCE, TYPE_RESISTOR]:
                     if br["measure"] == MEAS_TYPE_CURRENT:
                         mid_node = "N%s%s" % (br['n1'], br['n2'])
-                        vmeas_str = f"VI{ms_label_str}"
+                        vmeas_counter += 1
+                        vmeas_str = f"VI{vmeas_counter}"
                         spice_str += "%s%s %s %s %s\n" %  (type_str, label_write,  br["n1"],   mid_node,   value_write)
                         spice_str += "%s %s %s 0\n" %       (vmeas_str,             mid_node,   br["n2"]) if meas_comp_same_direction \
                                 else "%s %s %s 0\n" % (vmeas_str, br["n2"], mid_node)
@@ -705,13 +709,22 @@ class Circuit:
                 if br["type"] in [TYPE_CCVS, TYPE_CCCS]:    # 流控电压源、流控电流源
 
                     tmp = [b for b in self.branches if b['measure_label'] == br['control_measure_label'] and b['measure'] == MEAS_TYPE_CURRENT]
-                    assert len(tmp) == 1, "Controlled Source should have one and only one voltage measurement, but got %d, %d" % (len(tmp), br['control_measure_label'])
+                    assert len(tmp) == 1, "Controlled Source should have one and only one current measurement, but got %d, %d" % (len(tmp), br['control_measure_label'])
 
-                    control_measure_str = f"VI{ctr_ms_label_str}"
+                    # Find the corresponding vmeas component for this control measurement
+                    control_branch = tmp[0]
+                    control_vmeas_counter = 0
+                    for temp_br in sorted_branches:
+                        if temp_br["measure"] == MEAS_TYPE_CURRENT:
+                            control_vmeas_counter += 1
+                            if temp_br == control_branch:
+                                break
+                    control_measure_str = f"VI{control_vmeas_counter}"
 
                     if br["measure"] == MEAS_TYPE_CURRENT:
                         mid_node = "N%s%s" % (br['n1'], br['n2'])
-                        vmeas_str = f"VI{ms_label_str}"
+                        vmeas_counter += 1
+                        vmeas_str = f"VI{vmeas_counter}"
                         spice_str += "%s%s %s %s %s %s\n" %  (type_str, label_write,  br["n1"],   mid_node,   control_measure_str,  value_write)
                         spice_str += "%s %s %s 0\n" %       (vmeas_str,             mid_node,   br["n2"]) if meas_comp_same_direction \
                                 else "%s %s %s 0\n" % (vmeas_str, br["n2"], mid_node)
@@ -727,7 +740,8 @@ class Circuit:
 
                     if br["measure"] == MEAS_TYPE_CURRENT:
                         mid_node = "N%s%s" % (br['n1'], br['n2'])
-                        vmeas_str = f"VI{ms_label_str}"
+                        vmeas_counter += 1
+                        vmeas_str = f"VI{vmeas_counter}"
                         spice_str += "%s%s %s %s %s %s %s\n" %  (type_str, label_write,  br["n1"],   mid_node,   control_n1,  control_n2,  value_write)
                         spice_str += "%s %s %s 0\n" %       (vmeas_str,             mid_node,   br["n2"]) if meas_comp_same_direction \
                                 else "%s %s %s 0\n" % (vmeas_str, br["n2"], mid_node)
@@ -746,6 +760,8 @@ class Circuit:
 
             if zero_order:      # 零阶电路
                 sim_str = ".control\nop\n"
+                current_meas_counter = 0  # Counter for current measurements in simulation
+                
                 for br in self.branches:
                     if br["measure_label"] == -1:
                         ms_label_str = ""
@@ -767,7 +783,8 @@ class Circuit:
                     elif br["measure"] == MEAS_TYPE_CURRENT:
                         print('#')
                         # sim_str += f".PRINT DC V({br['n1']}, {br['n2']}) / (R{br['label']}) * measurement of I{br['measure_label']} : I(R{br['label']})\n"
-                        vmeas_str = f"VI{ms_label_str}"
+                        current_meas_counter += 1
+                        vmeas_str = f"VI{current_meas_counter}"
                         sim_str += "print i(%s) ; measurement of I%s\n" % (vmeas_str, ms_label_str)
                 sim_str += ".endc\n"
                 print(f"spice_str: {spice_str}, \n\nsim_str: {sim_str}\n\n")
@@ -1412,7 +1429,8 @@ def gen_circuit(note="v1", id=""):
                         vcomp_value_unit=vcomp_value_unit, hcomp_value_unit=hcomp_value_unit, \
                         vcomp_measure=vcomp_measure, hcomp_measure=hcomp_measure, \
                         vcomp_measure_label=vcomp_measure_label, hcomp_measure_label=hcomp_measure_label, \
-                        use_value_annotation=use_value_annotation, note=note, id=id,
+                        use_value_annotation= True,  #use_value_annotation, 
+                        note=note, id=id,
                         vcomp_direction=vcomp_direction, hcomp_direction=hcomp_direction,
                         vcomp_measure_direction=vcomp_measure_direction, hcomp_measure_direction=hcomp_measure_direction,
                         vcomp_control_meas_label=vcomp_control_meas_label, hcomp_control_meas_label=hcomp_control_meas_label,

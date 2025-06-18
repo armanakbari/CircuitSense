@@ -7,7 +7,7 @@ ABS_ROOT_PATH="$(pwd)"
 
 python generate.py \
     --note v11 \
-    --gen_num 200 \
+    --gen_num 100 \
     --save_path "$ABS_ROOT_PATH/data/$NOTE.json" \
     --num_proc 64 \
     > "$ABS_ROOT_PATH/logs/$NOTE.log"

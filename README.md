@@ -1,4 +1,4 @@
-# (ICLR'2025) MAPS: Advancing Multi-modal Reasoning in Expert-level Physical Science
+Advancing Multi-modal Reasoning in Expert-level Physical Science
 
 This repository is the official implementation of paper: [MAPS: Advancing Multi-modal Reasoning in Expert-level Physical Science](https://arxiv.org/abs/2501.10768). 
 

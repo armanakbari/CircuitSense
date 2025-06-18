@@ -224,8 +224,11 @@ def process_single_simulation(spice_code, qid, queue):
     
     print(f"Simulation Results: {sim_ret}")
 
+    # Check if simulation was successful
+    simulation_successful = 'error' not in sim_ret and 'raw_file' in sim_ret and 'Simulation interrupted due to error' not in sim_ret.get('raw_file', '')
+    
     ret = {
-        'valid': (circuit is not None),
+        'valid': simulation_successful,
         'sim_ret': sim_ret,
         'spice_code': spice_code,
         'has_zero_resistor': 'error' in sim_ret and 'Zero resistor' in sim_ret['error'],

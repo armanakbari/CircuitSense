@@ -1,0 +1,12 @@
+
+No compatibility mode selected!
+
+
+Circuit: Active DC Circuit
+
+Error on line 9 :
+  vi0 3 n53 0
+device already exists, existing one being used
+    Simulation interrupted due to error!
+
+Note: No ".plot", ".print", or ".fourier" lines; no simulations run
