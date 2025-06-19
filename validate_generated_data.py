@@ -43,12 +43,26 @@ def validate_circuit_dataset(labels_file, output_file=None, timeout=10):
             has_zero_resistor = result.get('has_zero_resistor', False)
             sim_ret = result.get('sim_ret', {})
             
-            if is_valid and 'error' not in sim_ret:
+            # Use the same validation logic as evaluate_spice.py
+            simulation_successful = (
+                is_valid and 
+                'error' not in sim_ret and 
+                'raw_file' in sim_ret and 
+                'Simulation interrupted due to error' not in sim_ret.get('raw_file', '')
+            )
+            
+            if simulation_successful:
                 valid_count += 1
                 status = "✅ VALID"
             else:
                 invalid_count += 1
                 status = "❌ INVALID"
+                
+                # Print detailed error information
+                if 'raw_file' in sim_ret and 'Simulation interrupted due to error' in sim_ret['raw_file']:
+                    print(f"🚨 NgSpice Error Detected in raw_file")
+                if 'error' in sim_ret:
+                    print(f"🚨 Error in sim_ret: {sim_ret['error']}")
                 
             print(f"Status: {status}")
             print(f"Has zero resistor: {has_zero_resistor}")

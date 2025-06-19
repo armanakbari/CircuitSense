@@ -1,0 +1,6 @@
+lcapy>=1.0
+sympy>=1.8
+numpy>=1.20
+matplotlib>=3.3
+scipy>=1.7
+networkx>=2.5 

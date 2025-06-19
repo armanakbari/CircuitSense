@@ -676,18 +676,36 @@ class Circuit:
             sorted_branches = sorted(self.branches, key=lambda x: x["order"])
             vmeas_counter = 0  # Counter to ensure unique voltage measurement names
             
+            # Create counters for each component type to ensure unique names
+            comp_counters = {
+                TYPE_RESISTOR: 0,
+                TYPE_CAPACITOR: 0, 
+                TYPE_INDUCTOR: 0,
+                TYPE_VOLTAGE_SOURCE: 0,
+                TYPE_CURRENT_SOURCE: 0,
+                TYPE_VCCS: 0,
+                TYPE_VCVS: 0,
+                TYPE_CCCS: 0,
+                TYPE_CCVS: 0
+            }
+            
             for br in sorted_branches:
                 meas_comp_same_direction = br["meas_comp_same_direction"]
                 ms_label_str = "" if br["measure_label"] == -1 else str(int(br["measure_label"]))
                 ctr_ms_label_str = "" if br["control_measure_label"] == -1 else str(int(br["control_measure_label"])) 
 
                 value_write = str(int(br["value"]))+unit_scales[br["value_unit"]] if self.use_value_annotation else "<Empty>"
-                label_write = "" if self.use_value_annotation else str(br["label"])
-                # NOTE: For value annotation, the label is not annotated in SPICE;
-                #       For label annotation, the value is not annotated in SPICE;
-
-                print(br["type"], br["label"], br["n1"], br["n2"], br["value"], br["value_unit"])
+                
+                # Create explicit unique device names
                 type_str = SPICE_PREFFIX[br['type']]
+                if br['type'] in comp_counters:
+                    comp_counters[br['type']] += 1
+                    device_name = f"{type_str}{comp_counters[br['type']]}"
+                else:
+                    device_name = type_str  # For components without counters (like shorts)
+                
+                print(br["type"], br["label"], br["n1"], br["n2"], br["value"], br["value_unit"])
+                print(f"Device name: {device_name}")
 
                 if br["type"] == TYPE_SHORT:
                     assert br["measure"] == MEAS_TYPE_CURRENT, f"short circuit should be measured by current, {br}"
@@ -700,11 +718,11 @@ class Circuit:
                         mid_node = "N%s%s" % (br['n1'], br['n2'])
                         vmeas_counter += 1
                         vmeas_str = f"VI{vmeas_counter}"
-                        spice_str += "%s%s %s %s %s\n" %  (type_str, label_write,  br["n1"],   mid_node,   value_write)
+                        spice_str += "%s %s %s %s\n" %  (device_name,  br["n1"],   mid_node,   value_write)
                         spice_str += "%s %s %s 0\n" %       (vmeas_str,             mid_node,   br["n2"]) if meas_comp_same_direction \
                                 else "%s %s %s 0\n" % (vmeas_str, br["n2"], mid_node)
                     else:
-                        spice_str += "%s%s %s %s %s\n" %   (type_str, label_write,  br["n1"],   br["n2"],   value_write)
+                        spice_str += "%s %s %s %s\n" %   (device_name,  br["n1"],   br["n2"],   value_write)
 
                 if br["type"] in [TYPE_CCVS, TYPE_CCCS]:    # 流控电压源、流控电流源
 
@@ -725,11 +743,11 @@ class Circuit:
                         mid_node = "N%s%s" % (br['n1'], br['n2'])
                         vmeas_counter += 1
                         vmeas_str = f"VI{vmeas_counter}"
-                        spice_str += "%s%s %s %s %s %s\n" %  (type_str, label_write,  br["n1"],   mid_node,   control_measure_str,  value_write)
+                        spice_str += "%s %s %s %s %s\n" %  (device_name,  br["n1"],   mid_node,   control_measure_str,  value_write)
                         spice_str += "%s %s %s 0\n" %       (vmeas_str,             mid_node,   br["n2"]) if meas_comp_same_direction \
                                 else "%s %s %s 0\n" % (vmeas_str, br["n2"], mid_node)
                     else:
-                        spice_str += "%s%s %s %s %s %s\n" %   (type_str, label_write,  br["n1"],   br["n2"],  control_measure_str,   value_write)
+                        spice_str += "%s %s %s %s %s\n" %   (device_name,  br["n1"],   br["n2"],  control_measure_str,   value_write)
             
                 if br["type"] in [TYPE_VCVS, TYPE_VCCS]:    # 压控电压源、压控电流源
 
@@ -742,11 +760,11 @@ class Circuit:
                         mid_node = "N%s%s" % (br['n1'], br['n2'])
                         vmeas_counter += 1
                         vmeas_str = f"VI{vmeas_counter}"
-                        spice_str += "%s%s %s %s %s %s %s\n" %  (type_str, label_write,  br["n1"],   mid_node,   control_n1,  control_n2,  value_write)
+                        spice_str += "%s %s %s %s %s %s\n" %  (device_name,  br["n1"],   mid_node,   control_n1,  control_n2,  value_write)
                         spice_str += "%s %s %s 0\n" %       (vmeas_str,             mid_node,   br["n2"]) if meas_comp_same_direction \
                                 else "%s %s %s 0\n" % (vmeas_str, br["n2"], mid_node)
                     else:
-                        spice_str += "%s%s %s %s %s %s %s\n" %  (type_str, label_write,  br["n1"],   br["n2"],   control_n1,  control_n2,  value_write)
+                        spice_str += "%s %s %s %s %s %s\n" %  (device_name,  br["n1"],   br["n2"],   control_n1,  control_n2,  value_write)
 
         # NOTE: Control Card
         if int(self.note[1:]) <= 9:
