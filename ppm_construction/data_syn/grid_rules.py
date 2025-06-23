@@ -1241,7 +1241,7 @@ def gen_circuit(note="v1", id=""):
         for op, dis in zip(num_grid_options, num_grid_dis):
             num_grid_choices += [op]*dis
  
-        num_comp_dis = [10, 5, 5, 20, 0, 0, 5, 2, 2, 2, 2]  # Short, V, I, R, C, L, Open, VCCS, VCVS, CCCS, CCVS
+        num_comp_dis = [10, 5, 5, 28, 0, 0, 5, 0, 0, 0, 0]  # Short, V, I, R, C, L, Open, VCCS, VCVS, CCCS, CCVS
         num_comp_dis_outer = [10, 5, 5, 20, 0, 0, 0, 2, 2, 2, 2]    # in the outer loop: no <open>
         num_comp_choices = []
         num_comp_choices_outer = []

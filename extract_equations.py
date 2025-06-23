@@ -1,256 +1,391 @@
 #!/usr/bin/env python3
 """
-Extract Symbolic Equations from Circuit Netlists using Lcapy
+Comprehensive Symbolic Equation Extraction with Lcapy
 
-This script focuses on extracting symbolic system of equations from circuit netlists.
-It provides clear output of the equations in mathematical form.
+This script demonstrates all the methods available in lcapy for extracting
+symbolic equations from circuits, including:
+1. Nodal analysis equations (KCL at each node)
+2. Modified nodal analysis (MNA) matrix equations
+3. Mesh/loop analysis equations
+4. State-space equations
+5. Individual component equations
+6. System matrix equations
 
 Author: Assistant
 Date: 2024
 """
 
 import json
-import re
 from pathlib import Path
+import lcapy
 from lcapy import Circuit
 import sympy as sp
-from typing import Dict, List
-import warnings
+from typing import Dict, List, Tuple, Optional
 
-def clean_netlist_for_lcapy(netlist_str: str) -> str:
-    """Clean SPICE netlist for Lcapy compatibility."""
-    lines = netlist_str.strip().split('\n')
-    cleaned_lines = []
-    
-    def convert_value(value_str):
-        """Convert SPICE units to numeric values."""
-        if not value_str:
-            return value_str
-            
-        multipliers = {
-            'T': 1e12, 'G': 1e9, 'MEG': 1e6, 'K': 1e3, 'k': 1e3,
-            'm': 1e-3, 'u': 1e-6, 'n': 1e-9, 'p': 1e-12, 'f': 1e-15
-        }
-        
-        for unit, mult in multipliers.items():
-            if value_str.upper().endswith(unit.upper()):
-                try:
-                    base_value = float(value_str[:-len(unit)])
-                    return str(base_value * mult)
-                except ValueError:
-                    continue
-        return value_str
-    
-    for line in lines:
-        line = line.strip()
-        
-        # Skip empty lines, comments, and SPICE commands
-        if not line or line.startswith('*') or line.startswith('.') or line.startswith('print'):
-            continue
-            
-        # Remove semicolon comments
-        if ';' in line:
-            line = line.split(';')[0].strip()
-            if not line:
-                continue
-        
-        # Convert measurement voltage sources
-        if line.startswith('VI'):
-            parts = line.split()
-            if len(parts) >= 4:
-                name = f"V_{parts[0]}"
-                new_line = f"{name} {parts[1]} {parts[2]} 0"
-                cleaned_lines.append(new_line)
-        # Skip controlled sources
-        elif line.startswith(('E', 'F', 'G', 'H')):
-            continue
-        else:
-            # Process regular components
-            parts = line.split()
-            if len(parts) >= 4:
-                first_char = parts[0][0].upper()
-                if first_char in ['R', 'C', 'L', 'V', 'I']:
-                    # Convert units
-                    for i in range(3, len(parts)):
-                        parts[i] = convert_value(parts[i])
-                    
-                    # Clean node names
-                    cleaned_line = ' '.join(parts)
-                    cleaned_line = re.sub(r'[^\w\s.-]', '_', cleaned_line)
-                    cleaned_lines.append(cleaned_line)
-    
-    return '\n'.join(cleaned_lines)
-
-def extract_symbolic_equations(circuit_id: str, netlist_str: str) -> Dict:
+def extract_all_symbolic_equations(circuit_spice: str, circuit_name: str = "example") -> Dict:
     """
-    Extract symbolic equations from a circuit netlist.
+    Extract all possible symbolic equations from a SPICE netlist string.
     
-    Args:
-        circuit_id: Circuit identifier
-        netlist_str: SPICE netlist string
+    Parameters:
+    -----------
+    circuit_spice : str
+        SPICE netlist as a string
+    circuit_name : str
+        Name for the circuit (for documentation)
         
     Returns:
-        Dictionary containing symbolic equations and analysis
+    --------
+    Dict containing all extracted equations and analysis results
     """
+    
+    print(f"\n{'='*80}")
+    print(f"SYMBOLIC EQUATION EXTRACTION FOR: {circuit_name.upper()}")
+    print(f"{'='*80}")
+    
+    # Create circuit from SPICE netlist
+    cct = Circuit(circuit_spice)
+    
+    # Initialize results dictionary
+    results = {
+        'circuit_name': circuit_name,
+        'netlist': circuit_spice,
+        'equations': {},
+        'matrices': {},
+        'analysis_methods': []
+    }
+    
+    print(f"\nCircuit Netlist:")
+    print(circuit_spice)
+    
+    # 1. NODAL ANALYSIS EQUATIONS
     try:
-        # Clean netlist
-        cleaned_netlist = clean_netlist_for_lcapy(netlist_str)
+        print(f"\n{'-'*60}")
+        print("1. NODAL ANALYSIS EQUATIONS")
+        print(f"{'-'*60}")
         
-        if not cleaned_netlist.strip():
-            return {'circuit_id': circuit_id, 'status': 'error', 'error': 'Empty netlist'}
+        na = cct.nodal_analysis()
         
-        # Create circuit
-        circuit = Circuit(cleaned_netlist)
+        # Get nodal equations (KCL at each node)
+        nodal_eqs = na.nodal_equations()
+        print("Nodal equations (KCL at each node):")
+        for node, eq in nodal_eqs.items():
+            print(f"  Node {node}: {eq}")
+            
+        # Get matrix form of nodal equations
+        matrix_eqs = na.matrix_equations()
+        print(f"\nMatrix form: A*v = b")
+        print(f"A matrix:\n{na.A}")
+        print(f"b vector:\n{na.b}")
         
-        result = {
-            'circuit_id': circuit_id,
-            'status': 'success',
-            'cleaned_netlist': cleaned_netlist,
-            'nodes': [str(node) for node in circuit.nodes if str(node) != '0'],
-            'components': {}
+        results['equations']['nodal'] = {
+            'node_equations': {str(k): str(v) for k, v in nodal_eqs.items()},
+            'matrix_A': str(na.A),
+            'vector_b': str(na.b),
+            'unknowns': str(na.unknowns)
         }
-        
-        # Get component information
-        for comp_type in ['resistors', 'capacitors', 'inductors', 'voltage_sources', 'current_sources']:
-            if hasattr(circuit, comp_type):
-                comp_list = getattr(circuit, comp_type)
-                if comp_list:
-                    result['components'][comp_type] = [str(comp) for comp in comp_list]
-        
-        # Extract symbolic nodal equations
-        try:
-            nodal = circuit.nodal_analysis()
-            
-            # Get the symbolic equations
-            if hasattr(nodal, 'equations'):
-                equations = nodal.equations
-                result['symbolic_equations'] = {
-                    'matrix_form': str(equations),
-                    'individual_equations': []
-                }
-                
-                # Try to get individual equations
-                if hasattr(equations, 'lhs') and hasattr(equations, 'rhs'):
-                    for i, (lhs, rhs) in enumerate(zip(equations.lhs, equations.rhs)):
-                        eq_str = f"{lhs} = {rhs}"
-                        result['symbolic_equations']['individual_equations'].append(eq_str)
-            
-            # Get the system matrix A and vector b (Ax = b)
-            if hasattr(nodal, 'A') and hasattr(nodal, 'b'):
-                result['system_matrix'] = {
-                    'A_matrix': str(nodal.A),
-                    'b_vector': str(nodal.b),
-                    'description': 'System: A * x = b, where x is the vector of node voltages'
-                }
-            
-            # Get node voltage expressions
-            node_voltages = {}
-            for node in result['nodes']:
-                try:
-                    voltage = circuit[node].V
-                    node_voltages[f'V_{node}'] = str(voltage)
-                except:
-                    pass
-            result['node_voltage_expressions'] = node_voltages
-            
-        except Exception as e:
-            result['equations_error'] = str(e)
-        
-        return result
+        results['analysis_methods'].append('nodal_analysis')
         
     except Exception as e:
-        return {
-            'circuit_id': circuit_id,
-            'status': 'error',
-            'error': str(e)
-        }
-
-def analyze_single_circuit(circuit_id: str, netlist: str):
-    """Analyze and display equations for a single circuit."""
-    print(f"\n{'='*60}")
-    print(f"Circuit Analysis: {circuit_id}")
-    print(f"{'='*60}")
+        print(f"Nodal analysis failed: {e}")
+        results['equations']['nodal'] = {'error': str(e)}
     
-    analysis = extract_symbolic_equations(circuit_id, netlist)
-    
-    if analysis['status'] == 'error':
-        print(f"❌ Error: {analysis['error']}")
-        return
-    
-    print("✅ Analysis successful!")
-    
-    # Show cleaned netlist
-    print(f"\n📋 Cleaned Netlist:")
-    print(analysis['cleaned_netlist'])
-    
-    # Show circuit components
-    print(f"\n🔧 Circuit Components:")
-    for comp_type, components in analysis['components'].items():
-        if components:
-            print(f"  {comp_type}: {components}")
-    
-    # Show nodes
-    print(f"\n📍 Nodes: {analysis['nodes']}")
-    
-    # Show symbolic equations
-    if 'symbolic_equations' in analysis:
-        print(f"\n🧮 Symbolic Equations:")
-        eq_info = analysis['symbolic_equations']
+    # 2. MODIFIED NODAL ANALYSIS (MNA)
+    try:
+        print(f"\n{'-'*60}")
+        print("2. MODIFIED NODAL ANALYSIS (MNA)")
+        print(f"{'-'*60}")
         
-        if 'individual_equations' in eq_info and eq_info['individual_equations']:
-            print("Individual nodal equations:")
-            for i, eq in enumerate(eq_info['individual_equations']):
-                print(f"  Equation {i+1}: {eq}")
-        else:
-            print(f"Matrix form: {eq_info.get('matrix_form', 'Not available')}")
+        mna = cct.modified_nodal_analysis()
+        
+        # Get MNA matrix equations
+        mna_matrix_eqs = mna.matrix_equations()
+        print("MNA Matrix equations:")
+        print(f"G matrix (conductance):\n{mna.G}")
+        print(f"B matrix:\n{mna.B}")
+        print(f"C matrix:\n{mna.C}")
+        print(f"D matrix:\n{mna.D}")
+        
+        results['equations']['mna'] = {
+            'G_matrix': str(mna.G),
+            'B_matrix': str(mna.B), 
+            'C_matrix': str(mna.C),
+            'D_matrix': str(mna.D),
+            'matrix_equations': str(mna_matrix_eqs)
+        }
+        results['analysis_methods'].append('modified_nodal_analysis')
+        
+    except Exception as e:
+        print(f"MNA failed: {e}")
+        results['equations']['mna'] = {'error': str(e)}
     
-    # Show system matrix
-    if 'system_matrix' in analysis:
-        print(f"\n📊 System Matrix (Ax = b):")
-        sys_info = analysis['system_matrix']
-        print(f"  Description: {sys_info['description']}")
-        print(f"  A matrix: {sys_info['A_matrix']}")
-        print(f"  b vector: {sys_info['b_vector']}")
+    # 3. MESH/LOOP ANALYSIS
+    try:
+        print(f"\n{'-'*60}")
+        print("3. MESH/LOOP ANALYSIS")
+        print(f"{'-'*60}")
+        
+        la = cct.loop_analysis()
+        
+        # Get mesh equations
+        mesh_eqs = la.mesh_equations()
+        print("Mesh equations (KVL around each loop):")
+        for mesh, eq in mesh_eqs.items():
+            print(f"  Mesh {mesh}: {eq}")
+            
+        # Get matrix form
+        mesh_matrix = la.matrix_equations()
+        print(f"\nMesh matrix form:")
+        print(f"A matrix:\n{la.A}")
+        print(f"b vector:\n{la.b}")
+        
+        results['equations']['mesh'] = {
+            'mesh_equations': {str(k): str(v) for k, v in mesh_eqs.items()},
+            'matrix_A': str(la.A),
+            'vector_b': str(la.b),
+            'unknowns': str(la.unknowns)
+        }
+        results['analysis_methods'].append('loop_analysis')
+        
+    except Exception as e:
+        print(f"Mesh analysis failed: {e}")
+        results['equations']['mesh'] = {'error': str(e)}
     
-    # Show node voltage expressions
-    if 'node_voltage_expressions' in analysis:
-        print(f"\n⚡ Node Voltage Expressions:")
-        for node, expr in analysis['node_voltage_expressions'].items():
-            print(f"  {node}: {expr}")
+    # 4. STATE-SPACE ANALYSIS
+    try:
+        print(f"\n{'-'*60}")
+        print("4. STATE-SPACE ANALYSIS")
+        print(f"{'-'*60}")
+        
+        ss = cct.ss
+        
+        # Get state equations
+        state_eqs = ss.state_equations()
+        print("State equations (dx/dt = Ax + Bu):")
+        print(state_eqs)
+        
+        # Get output equations  
+        output_eqs = ss.output_equations()
+        print("\nOutput equations (y = Cx + Du):")
+        print(output_eqs)
+        
+        print(f"\nState-space matrices:")
+        print(f"A matrix:\n{ss.A}")
+        print(f"B matrix:\n{ss.B}")
+        print(f"C matrix:\n{ss.C}")
+        print(f"D matrix:\n{ss.D}")
+        
+        results['equations']['state_space'] = {
+            'state_equations': str(state_eqs),
+            'output_equations': str(output_eqs),
+            'A_matrix': str(ss.A),
+            'B_matrix': str(ss.B),
+            'C_matrix': str(ss.C),
+            'D_matrix': str(ss.D),
+            'state_variables': str(ss.x),
+            'input_variables': str(ss.u),
+            'output_variables': str(ss.y)
+        }
+        results['analysis_methods'].append('state_space')
+        
+    except Exception as e:
+        print(f"State-space analysis failed: {e}")
+        results['equations']['state_space'] = {'error': str(e)}
+    
+    # 5. INDIVIDUAL COMPONENT EQUATIONS
+    try:
+        print(f"\n{'-'*60}")
+        print("5. INDIVIDUAL COMPONENT EQUATIONS")
+        print(f"{'-'*60}")
+        
+        component_eqs = {}
+        
+        # Get equations for each component
+        for name, cpt in cct.elements.items():
+            try:
+                # Voltage across component
+                v_cpt = cpt.V(lcapy.s)
+                i_cpt = cpt.I(lcapy.s)
+                
+                print(f"Component {name}:")
+                print(f"  Voltage: {v_cpt}")
+                print(f"  Current: {i_cpt}")
+                
+                component_eqs[name] = {
+                    'voltage': str(v_cpt),
+                    'current': str(i_cpt),
+                    'type': str(type(cpt).__name__)
+                }
+                
+            except Exception as e:
+                component_eqs[name] = {'error': str(e)}
+        
+        results['equations']['components'] = component_eqs
+        
+        # Node voltages
+        node_voltages = {}
+        for node_name in cct.node_list:
+            if node_name != '0':  # Skip ground node
+                try:
+                    v_node = cct[node_name].V(lcapy.s)
+                    print(f"Node {node_name} voltage: {v_node}")
+                    node_voltages[str(node_name)] = str(v_node)
+                except Exception as e:
+                    node_voltages[str(node_name)] = str(e)
+        
+        results['equations']['node_voltages'] = node_voltages
+        
+    except Exception as e:
+        print(f"Component analysis failed: {e}")
+        results['equations']['components'] = {'error': str(e)}
+    
+    # 6. TRANSFER FUNCTIONS AND FREQUENCY RESPONSE
+    try:
+        print(f"\n{'-'*60}")
+        print("6. TRANSFER FUNCTIONS")
+        print(f"{'-'*60}")
+        
+        # Try to find transfer functions between different nodes
+        transfer_functions = {}
+        nodes = [n for n in cct.node_list if n != '0']
+        
+        if len(nodes) >= 2:
+            # Example: transfer function from first node to last node
+            input_node = nodes[0]
+            output_node = nodes[-1]
+            
+            try:
+                # Transfer function H(s) = Vout(s)/Vin(s)
+                H = cct.transfer(input_node, 0, output_node, 0)
+                print(f"Transfer function H(s) = V{output_node}/V{input_node}: {H}")
+                transfer_functions[f'H_{input_node}_to_{output_node}'] = str(H)
+            except Exception as e:
+                transfer_functions['error'] = str(e)
+        
+        results['equations']['transfer_functions'] = transfer_functions
+        
+    except Exception as e:
+        print(f"Transfer function analysis failed: {e}")
+        results['equations']['transfer_functions'] = {'error': str(e)}
+    
+    # 7. IMPEDANCE AND ADMITTANCE
+    try:
+        print(f"\n{'-'*60}")
+        print("7. IMPEDANCE AND ADMITTANCE")
+        print(f"{'-'*60}")
+        
+        impedances = {}
+        nodes = [n for n in cct.node_list if n != '0']
+        
+        for i, node in enumerate(nodes):
+            try:
+                # Input impedance at each node
+                Z_in = cct.impedance(node, 0)
+                Y_in = cct.admittance(node, 0)
+                print(f"Node {node} - Input impedance: {Z_in}")
+                print(f"Node {node} - Input admittance: {Y_in}")
+                
+                impedances[f'node_{node}'] = {
+                    'impedance': str(Z_in),
+                    'admittance': str(Y_in)
+                }
+            except Exception as e:
+                impedances[f'node_{node}'] = {'error': str(e)}
+        
+        results['equations']['impedances'] = impedances
+        
+    except Exception as e:
+        print(f"Impedance analysis failed: {e}")
+        results['equations']['impedances'] = {'error': str(e)}
+    
+    print(f"\n{'='*80}")
+    print("EQUATION EXTRACTION COMPLETE")
+    print(f"{'='*80}")
+    
+    return results
+
+def demonstrate_simple_rc_circuit():
+    """Demonstrate equation extraction on a simple RC circuit."""
+    
+    circuit_spice = """
+    V1 1 0 step 5
+    R1 1 2 1000
+    C1 2 0 1e-6
+    """
+    
+    return extract_all_symbolic_equations(circuit_spice, "Simple RC Circuit")
+
+def demonstrate_rlc_circuit():
+    """Demonstrate equation extraction on an RLC circuit."""
+    
+    circuit_spice = """
+    V1 1 0 step 10
+    R1 1 2 100
+    L1 2 3 1e-3
+    C1 3 0 1e-6
+    """
+    
+    return extract_all_symbolic_equations(circuit_spice, "RLC Circuit")
+
+def demonstrate_opamp_circuit():
+    """Demonstrate equation extraction on an op-amp circuit."""
+    
+    circuit_spice = """
+    V1 1 0 step 1
+    R1 1 2 1000
+    R2 2 3 10000
+    O1 0 2 3
+    """
+    
+    return extract_all_symbolic_equations(circuit_spice, "Op-Amp Circuit")
+
+def save_results_to_file(results: Dict, filename: str):
+    """Save the extracted equations to a JSON file."""
+    
+    try:
+        with open(filename, 'w') as f:
+            json.dump(results, f, indent=2)
+        print(f"\nResults saved to: {filename}")
+    except Exception as e:
+        print(f"Error saving results: {e}")
 
 def main():
-    """Main function to demonstrate symbolic equation extraction."""
-    print("Symbolic Circuit Equation Extractor using Lcapy")
-    print("=" * 50)
+    """Main function to demonstrate equation extraction."""
     
-    # Load dataset
-    labels_file = "datasets/grid_v11_240831/labels.json"
+    print("Lcapy Symbolic Equation Extraction Demonstration")
+    print("="*80)
     
-    if not Path(labels_file).exists():
-        print(f"Dataset file not found: {labels_file}")
-        return
+    # Demonstrate on different circuit types
+    circuits_to_analyze = [
+        demonstrate_simple_rc_circuit,
+        demonstrate_rlc_circuit,
+        # demonstrate_opamp_circuit,  # Uncomment if op-amp models are needed
+    ]
     
-    with open(labels_file, 'r') as f:
-        dataset = json.load(f)
+    all_results = []
     
-    # Analyze first few circuits as examples
-    circuit_ids = list(dataset.keys())[:3]  # First 3 circuits
+    for circuit_func in circuits_to_analyze:
+        try:
+            result = circuit_func()
+            all_results.append(result)
+        except Exception as e:
+            print(f"Error analyzing circuit: {e}")
     
-    for circuit_id in circuit_ids:
-        netlist = dataset[circuit_id]
-        analyze_single_circuit(circuit_id, netlist)
+    # Save all results
+    if all_results:
+        save_results_to_file(all_results, 'symbolic_equations_results.json')
     
-    print(f"\n\n{'='*60}")
-    print("Analysis Summary")
-    print(f"{'='*60}")
-    print(f"Analyzed {len(circuit_ids)} circuits successfully!")
-    print("The symbolic equations show the relationships between node voltages,")
-    print("resistances, currents, and voltage sources in mathematical form.")
-    print("\nThese equations can be used for:")
-    print("- Circuit analysis and design")
-    print("- Parameter sensitivity analysis") 
-    print("- Optimization and synthesis")
-    print("- Educational purposes")
+    print("\n" + "="*80)
+    print("SUMMARY OF AVAILABLE EQUATION EXTRACTION METHODS:")
+    print("="*80)
+    print("1. Nodal Analysis: cct.nodal_analysis().nodal_equations()")
+    print("2. Modified Nodal Analysis: cct.modified_nodal_analysis().matrix_equations()")
+    print("3. Mesh Analysis: cct.loop_analysis().mesh_equations()")
+    print("4. State-Space: cct.ss.state_equations() and cct.ss.output_equations()")
+    print("5. Component Equations: cct.component_name.V(s), cct.component_name.I(s)")
+    print("6. Node Voltages: cct[node].V(s)")
+    print("7. Transfer Functions: cct.transfer(n1, n2, n3, n4)")
+    print("8. Impedance/Admittance: cct.impedance(n1, n2), cct.admittance(n1, n2)")
+    print("="*80)
 
 if __name__ == "__main__":
     main() 
