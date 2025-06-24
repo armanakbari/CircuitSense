@@ -43,6 +43,17 @@ def clean_spice_for_lcapy_with_controlled_sources(spice_netlist: str) -> str:
     # Track measurement voltage sources to properly reference them
     measurement_sources = {}  # VI1 -> V_VI1 mapping
     
+    # Extract and preserve title directive
+    title_line = None
+    for line in lines:
+        if line.strip().startswith('.title'):
+            title_line = line.strip()
+            break
+    
+    # Add title if found (critical for correct ngspice simulation)
+    if title_line:
+        cleaned_lines.append(title_line)
+    
     def convert_spice_value(value_str):
         """Convert SPICE units to numeric values."""
         if not value_str or value_str == '0':
@@ -68,12 +79,13 @@ def clean_spice_for_lcapy_with_controlled_sources(spice_netlist: str) -> str:
         
         return value_str
     
-    # First pass: identify and convert measurement sources
+    # Single pass: process all components in order
     for line in lines:
         line = line.strip()
         
-        # Skip empty lines, comments, and SPICE commands
-        if (not line or line.startswith('*') or line.startswith('.') or 
+        # Skip empty lines, comments, and SPICE commands (but preserve .title)
+        if (not line or line.startswith('*') or 
+            (line.startswith('.') and not line.startswith('.title')) or 
             line.startswith('print') or ';' in line):
             continue
         
@@ -82,6 +94,7 @@ def clean_spice_for_lcapy_with_controlled_sources(spice_netlist: str) -> str:
             continue
             
         component_name = parts[0]
+        first_char = component_name[0].upper()
         
         # Convert voltage measurement sources (VI) to regular voltage sources
         if component_name.startswith('VI'):
@@ -96,29 +109,9 @@ def clean_spice_for_lcapy_with_controlled_sources(spice_netlist: str) -> str:
                 node2 = re.sub(r'[^\w]', '_', node2)
                 
                 cleaned_lines.append(f"{new_name} {node1} {node2} 0")
-    
-    # Second pass: handle all other components including controlled sources
-    for line in lines:
-        line = line.strip()
-        
-        # Skip empty lines, comments, and SPICE commands
-        if (not line or line.startswith('*') or line.startswith('.') or 
-            line.startswith('print') or ';' in line):
-            continue
-        
-        parts = line.split()
-        if len(parts) < 3:
-            continue
-            
-        component_name = parts[0]
-        first_char = component_name[0].upper()
-        
-        # Skip measurement sources (already processed)
-        if component_name.startswith('VI'):
-            continue
         
         # Handle basic components (R, L, C, V, I)
-        if first_char in ['R', 'L', 'C', 'V', 'I']:
+        elif first_char in ['R', 'L', 'C', 'V', 'I']:
             if len(parts) >= 4:
                 name = parts[0]
                 node1, node2 = parts[1], parts[2]
@@ -217,6 +210,17 @@ def clean_spice_for_lcapy_simple(spice_netlist: str) -> str:
     lines = spice_netlist.strip().split('\n')
     cleaned_lines = []
     
+    # Extract and preserve title directive
+    title_line = None
+    for line in lines:
+        if line.strip().startswith('.title'):
+            title_line = line.strip()
+            break
+    
+    # Add title if found (critical for correct ngspice simulation)
+    if title_line:
+        cleaned_lines.append(title_line)
+    
     def convert_spice_value(value_str):
         """Convert SPICE units to numeric values."""
         if not value_str or value_str == '0':
@@ -245,8 +249,9 @@ def clean_spice_for_lcapy_simple(spice_netlist: str) -> str:
     for line in lines:
         line = line.strip()
         
-        # Skip empty lines, comments, and SPICE commands
-        if (not line or line.startswith('*') or line.startswith('.') or 
+        # Skip empty lines, comments, and SPICE commands (but preserve .title)
+        if (not line or line.startswith('*') or 
+            (line.startswith('.') and not line.startswith('.title')) or 
             line.startswith('print') or ';' in line):
             continue
         
@@ -836,14 +841,10 @@ def demonstrate_successful_analysis_robust(results: Dict):
             print(f"  {error_type}: {count} circuits")
 
 def main():
-    """Main function to run the robust synthetic circuit analysis."""
-    
-    # Add command line argument parsing
+
     parser = argparse.ArgumentParser(description='Robust Synthetic Circuit Analysis')
-    parser.add_argument('--max-circuits', type=int, default=None, 
-                       help='Maximum number of circuits to analyze (default: all)')
-    parser.add_argument('--labels-file', default="datasets/grid_v11_240831/labels.json",
-                       help='Path to labels.json file')
+    parser.add_argument('--max-circuits', type=int, default=None, help='Maximum number of circuits to analyze (default: all)')
+    parser.add_argument('--labels-file', default="datasets/grid_v11_240831/labels.json", help='Path to labels.json file')
     args = parser.parse_args()
     
     # Path to dataset
@@ -851,16 +852,15 @@ def main():
     max_circuits = args.max_circuits
     
     if not Path(labels_file).exists():
-        print(f"❌ Dataset file not found: {labels_file}")
-        print("Please ensure the synthetic circuit dataset is generated first.")
+        print(f"Dataset file not found: {labels_file}")
         return
     
-    print("🧪 ROBUST SYNTHETIC CIRCUIT ANALYSIS")
+    print("ROBUST SYNTHETIC CIRCUIT ANALYSIS")
     print("="*50)
     if max_circuits:
-        print(f"📊 Analyzing first {max_circuits} circuits")
+        print(f"Analyzing first {max_circuits} circuits")
     else:
-        print(f"📊 Analyzing ALL circuits in dataset")
+        print(f"Analyzing ALL circuits in dataset")
     
     # Run analysis with controlled sources
     print("\n🔬 Analysis #1: INCLUDING Controlled Sources")
