@@ -4,7 +4,6 @@ import numpy as np
 import random
 np.random.seed(42)
 random.seed(42)
-import readchar
 
 # NOTE: Components Types
 (
@@ -60,9 +59,11 @@ v8_latex_template = r"""\documentclass[border=10pt]{standalone}
 \tikzset{every draw/.style={font=<font>}}
 \begin{document}
 \begin{center}
-\begin{circuitikz}[line width=1pt]
+\begin{circuitikz}[line width=1pt, american]
 \ctikzset{tripoles/en amp/input height=0.5};
 \ctikzset{inductors/scale=1.2, inductor=american}
+\ctikzset{resistors/scale=0.8, resistor=american}
+\ctikzset{capacitors/scale=0.8}
 <main>
 \end{circuitikz}
 \end{center}
@@ -74,9 +75,11 @@ v8_latex_template = r"""\documentclass[border=10pt]{standalone}
 \tikzset{every draw/.style={font=<font>}}
 \begin{document}
 \begin{center}
-\begin{circuitikz}[line width=1pt]
+\begin{circuitikz}[line width=1pt, american]
 \ctikzset{tripoles/en amp/input height=0.5};
 \ctikzset{inductors/scale=1.2, inductor=american}
+\ctikzset{resistors/scale=0.8, resistor=american}
+\ctikzset{capacitors/scale=0.8}
 <main>
 \end{circuitikz}
 \end{center}
@@ -93,7 +96,7 @@ LATEX_TEMPLATES = {
 unit_scales = ["", "k", "m", "\\mu", "n", "p"]
 
 LABEL_TYPE_NUMBER, LABEL_TYPE_STRING = tuple(range(2)) # label is numerical format or string format
-components_latex_info = [("short", "", ""), ("V","U","V"), ("I","I","A"), ("generic","R","\Omega"), ("C","C","F"), ("L","L","H"),
+components_latex_info = [("short", "", ""), ("V","U","V"), ("I","I","A"), ("R","R",r"\Omega"), ("C","C","F"), ("L","L","H"),
                          ("open", "", ""), ("cisource", "", ""), ("cvsource", "", ""), ("cisource", "", ""), ("cvsource", "", "") ] # type, label, unit
 
 CUR_MODE_1, CUR_MODE_2, CUR_MODE_3, CUR_MODE_4, CUR_MODE_5, CUR_MODE_6 = tuple(range(6))
@@ -119,8 +122,29 @@ def get_latex_line_draw(x1, y1, x2, y2,
         x1, y1, x2, y2 = x2, y2, x1, y1
     meas_comp_same_direction = (direction == measure_direction)
     
+    # Calculate line length to determine if we need larger offsets
+    line_length = np.sqrt((x2-x1)**2 + (y2-y1)**2)
+    is_short_line = line_length < 2.5
+    is_vertical = abs(x2-x1) < 0.1
+    is_horizontal = abs(y2-y1) < 0.1
+    
+    # Adaptive offset multipliers based on line length and component complexity
+    base_offset = 0.5 if not is_short_line else 0.4
+    node_offset = 0.8 if not is_short_line else 0.6
+    arrow_offset = 0.4 if not is_short_line else 0.3
+    
+    # Reduced offsets for controlled sources to prevent being too far
+    controlled_source_offset_multiplier = 1.3 if type_number in [TYPE_VCCS, TYPE_VCVS, TYPE_CCCS, TYPE_CCVS] else 1.0
+    measurement_offset_multiplier = 1.2 if measure_type != MEAS_TYPE_NONE else 1.0
+    
+    # Apply moderate enhanced offsets when both controlled source and measurement are present
+    if type_number in [TYPE_VCCS, TYPE_VCVS, TYPE_CCCS, TYPE_CCVS] and measure_type != MEAS_TYPE_NONE:
+        base_offset *= 1.5
+        node_offset *= 1.7
+        arrow_offset *= 1.3
+    
     if style == "chinese":
-        print(f"drawing between ({x1:.1f},{y1:.1f}) and ({x2:.1f},{y2:.1f})\n")
+        print(f"drawing between ({x1:.1f},{y1:.1f}) and ({x2:.1f},{y2:.1f}), length={line_length:.2f}\n")
         print(f"type_num: {type_number}, label_num: {label_subscript}, value: {value}, use_value_annotation: {use_value_annotation}, label_type_number: {label_subscript_type}, direction: {direction}")
         print(f"measure_type: {measure_type}, measure_label: {measure_label}, measure_direction: {measure_direction}")
         type_number = int(type_number)
@@ -193,9 +217,9 @@ def get_latex_line_draw(x1, y1, x2, y2,
 # NOTE: plot the voltage source
         elif type_number == TYPE_VOLTAGE_SOURCE:
             if int(note[1:]) < 8:
-                ret =  f"\\draw ({x1:.1f},{y1:.1f}) to[V] ({x2:.1f},{y2:.1f});\n\\ctikzset{{american}}\n\\draw ({x1:.1f},{y1:.1f}) to [short, v=${labl}$] ({x2:.1f},{y2:.1f});\n\\ctikzset{{european}}\n"
+                ret =  f"\\draw ({x1:.1f},{y1:.1f}) to[V] ({x2:.1f},{y2:.1f});\n\\draw ({x1:.1f},{y1:.1f}) to [short, v=${labl}$] ({x2:.1f},{y2:.1f});\n"
             else:
-                ret =  f"\\draw ({x1:.1f},{y1:.1f}) to [short] ({x2:.1f},{y2:.1f});\n\\ctikzset{{american}};\n\\draw ({x1:.1f},{y1:.1f}) to[rmeter, t, v=${labl}$] ({x2:.1f},{y2:.1f});\n\\ctikzset{{european}};\n"
+                ret =  f"\\draw ({x1:.1f},{y1:.1f}) to [short] ({x2:.1f},{y2:.1f});\n\\draw ({x1:.1f},{y1:.1f}) to[rmeter, t, v=${labl}$] ({x2:.1f},{y2:.1f});\n"
 
             if not meas_comp_same_direction:
                 x1, y1, x2, y2 = x2, y2, x1, y1
@@ -222,16 +246,16 @@ def get_latex_line_draw(x1, y1, x2, y2,
                 normal = np.array([-vector[1], vector[0]], dtype=np.float64)
                 normal /= np.linalg.norm(normal)
                 if cur_mode == CUR_MODE_1:
-                    new_mid = mid + 0.6*normal
-                    new_mid_node = mid + normal
+                    new_mid = mid + base_offset*normal
+                    new_mid_node = mid + node_offset*normal
 
                 else:
-                    new_mid = mid - 0.6*normal
-                    new_mid_node = mid - normal
+                    new_mid = mid - base_offset*normal
+                    new_mid_node = mid - node_offset*normal
 
                 norm_vector = vector / np.linalg.norm(vector)
-                new_start = new_mid - 0.4*norm_vector
-                new_end = new_mid + 0.4*norm_vector
+                new_start = new_mid - arrow_offset*norm_vector
+                new_end = new_mid + arrow_offset*norm_vector
                 ret += f"\\draw[-latexslim] ({new_start[0]:.1f},{new_start[1]:.1f}) to ({new_end[0]:.1f},{new_end[1]:.1f});\n"
                 ret += f"\\node at ({new_mid_node[0]:.1f}, {new_mid_node[1]:.1f}) {{${labl}$}};\n"
                 
@@ -244,7 +268,7 @@ def get_latex_line_draw(x1, y1, x2, y2,
                 x1, y1, x2, y2 = x2, y2, x1, y1
                 v_plot_extra = "^"
             if measure_type == MEAS_TYPE_VOLTAGE:
-                ret += f"\\ctikzset{{american}}\n\\draw ({x1:.1f},{y1:.1f}) to[rmeter, v{v_plot_extra}=${measure_label}$] ({x2:.1f},{y2:.1f});\n\\ctikzset{{european}}\n"
+                ret += f"\\draw ({x1:.1f},{y1:.1f}) to[rmeter, v{v_plot_extra}=${measure_label}$] ({x2:.1f},{y2:.1f});\n"
                 
             return ret
 
@@ -257,7 +281,7 @@ def get_latex_line_draw(x1, y1, x2, y2,
                 x1, y1, x2, y2 = x2, y2, x1, y1
                 v_plot_extra = "^"
             if measure_type == MEAS_TYPE_VOLTAGE:
-                ret +=  f"\\ctikzset{{american}}\n\\draw ({x1:.1f},{y1:.1f}) to[{comp_circuitikz_type}, v{v_plot_extra}=${measure_label}$] ({x2:.1f},{y2:.1f});\n\\ctikzset{{european}}\n"
+                ret +=  f"\\draw ({x1:.1f},{y1:.1f}) to[{comp_circuitikz_type}, v{v_plot_extra}=${measure_label}$] ({x2:.1f},{y2:.1f});\n"
 
             elif measure_type == MEAS_TYPE_CURRENT:
                 if int(note[1:]) >= 8:
@@ -272,19 +296,23 @@ def get_latex_line_draw(x1, y1, x2, y2,
                     vector = np.array([x2-x1, y2-y1])
                     normal = np.array([-vector[1], vector[0]], dtype=np.float64)
                     normal /= np.linalg.norm(normal)
+                    
+                    # Enhanced offsets to prevent overlap with component labels
+                    enhanced_base_offset = base_offset * 1.2  # Increased for better separation
+                    enhanced_node_offset = node_offset * 1.8  # Increased for better separation
+                    
                     if cur_mode == CUR_MODE_1:
-                        new_mid = mid + 0.4*normal
-                        new_mid_node = mid + 0.8*normal
-
+                        new_mid = mid + enhanced_base_offset*normal
+                        new_mid_node = mid + enhanced_node_offset*normal
                     else:
-                        new_mid = mid - 0.4*normal
-                        new_mid_node = mid - 0.8*normal
+                        new_mid = mid - enhanced_base_offset*normal
+                        new_mid_node = mid - enhanced_node_offset*normal
 
                     norm_vector = vector / np.linalg.norm(vector)
-                    new_start = new_mid - 0.4*norm_vector
-                    new_end = new_mid + 0.4*norm_vector
+                    new_start = new_mid - arrow_offset*norm_vector
+                    new_end = new_mid + arrow_offset*norm_vector
                     ret += f"\\draw[-latexslim] ({new_start[0]:.1f},{new_start[1]:.1f}) to ({new_end[0]:.1f},{new_end[1]:.1f});\n"
-                    ret += f"\\node at ({new_mid_node[0]:.1f},{new_mid_node[1]:.1f}) {{${labl}$}};\n"
+                    ret += f"\\node at ({new_mid_node[0]:.1f},{new_mid_node[1]:.1f}) {{${measure_label}$}};\n"
                 
                 elif cur_mode in [CUR_MODE_3, CUR_MODE_4, CUR_MODE_5, CUR_MODE_6]:
                     flow_dir = flow_direction[cur_mode-2]
@@ -301,12 +329,12 @@ def get_latex_line_draw(x1, y1, x2, y2,
                 x1, y1, x2, y2 = x2, y2, x1, y1
                 v_plot_extra = "^"
             if measure_type == MEAS_TYPE_VOLTAGE:
-                ret += f"\\ctikzset{{american}};\n\\draw ({x1:.1f},{y1:.1f}) to[open, v{v_plot_extra}=${measure_label}$] ({x2:.1f},{y2:.1f});\n\\ctikzset{{european}};\n"
+                ret += f"\\draw ({x1:.1f},{y1:.1f}) to[open, v{v_plot_extra}=${measure_label}$] ({x2:.1f},{y2:.1f});\n"
             return ret
         
 # NOTE: plot controlled voltage source
         elif type_number in [TYPE_VCVS, TYPE_CCVS]:
-            ret = f"\\ctikzset{{american}};\n\\draw ({x1:.1f},{y1:.1f}) to [short, v=${labl}$] ({x2:.1f},{y2:.1f});\n\\ctikzset{{european}};\n\\draw ({x1:.1f},{y1:.1f}) to[cvsource] ({x2:.1f},{y2:.1f});"
+            ret = f"\\draw ({x1:.1f},{y1:.1f}) to [short, v=${labl}$] ({x2:.1f},{y2:.1f});\n\\draw ({x1:.1f},{y1:.1f}) to[cvsource] ({x2:.1f},{y2:.1f});"
 
             if not meas_comp_same_direction:
                 x1, y1, x2, y2 = x2, y2, x1, y1
@@ -316,30 +344,56 @@ def get_latex_line_draw(x1, y1, x2, y2,
             
             return ret
 
-# NOTE：plot controlled current source
+# NOTE：plot controlled current source - ENHANCED for collision avoidance
         elif type_number in [TYPE_VCCS, TYPE_CCCS]:
             ret = f"\\draw ({x1:.1f},{y1:.1f}) to[cisource] ({x2:.1f},{y2:.1f});\n"
 
             cur_mode_choices = [CUR_MODE_1, CUR_MODE_2] * 10 + [CUR_MODE_3, CUR_MODE_4] * 0 + [CUR_MODE_5, CUR_MODE_6] * 1
             cur_mode = np.random.choice(cur_mode_choices)
-            print(f"cur_mode: {cur_mode} when ploting current source")
+            print(f"cur_mode: {cur_mode} when ploting controlled current source")
 
             if cur_mode == CUR_MODE_1 or cur_mode == CUR_MODE_2:
                 mid = np.array([(x1+x2)/2, (y1+y2)/2])
                 vector = np.array([x2-x1, y2-y1])
                 normal = np.array([-vector[1], vector[0]], dtype=np.float64)
                 normal /= np.linalg.norm(normal)
+                
+                # Advanced positioning for controlled sources to avoid overlaps
+                enhanced_base_offset = base_offset * controlled_source_offset_multiplier * 1.4  # Increased multiplier
+                enhanced_node_offset = node_offset * controlled_source_offset_multiplier * 1.6  # Increased multiplier
+                
+                # Smart positioning based on measurement type and line orientation
+                if measure_type != MEAS_TYPE_NONE:
+                    if is_horizontal:
+                        # For horizontal lines: controlled source above, measurement below OR far right/left
+                        if measure_type == MEAS_TYPE_CURRENT:
+                            cur_mode = CUR_MODE_1  # Controlled source above
+                            enhanced_node_offset *= 1.8  # Extra spacing for current measurements
+                        else:
+                            cur_mode = CUR_MODE_1  # Controlled source above for voltage too
+                    elif is_vertical:
+                        # For vertical lines: controlled source left, measurement right OR top/bottom
+                        if measure_type == MEAS_TYPE_CURRENT:
+                            cur_mode = CUR_MODE_2  # Controlled source left
+                            enhanced_node_offset *= 1.8  # Extra spacing for current measurements
+                        else:
+                            cur_mode = CUR_MODE_2  # Controlled source left for voltage too
+                    else:
+                        # For diagonal lines, use alternating pattern based on direction
+                        cur_mode = CUR_MODE_1 if (x2-x1) * (y2-y1) > 0 else CUR_MODE_2
+                        enhanced_node_offset *= 1.5
+                
+                # Calculate positions with enhanced offsets
                 if cur_mode == CUR_MODE_1:
-                    new_mid = mid + 0.6*normal
-                    new_mid_node = mid + normal
-
+                    new_mid = mid + enhanced_base_offset*normal
+                    new_mid_node = mid + enhanced_node_offset*normal
                 else:
-                    new_mid = mid - 0.6*normal
-                    new_mid_node = mid - normal
+                    new_mid = mid - enhanced_base_offset*normal
+                    new_mid_node = mid - enhanced_node_offset*normal
 
                 norm_vector = vector / np.linalg.norm(vector)
-                new_start = new_mid - 0.4*norm_vector
-                new_end = new_mid + 0.4*norm_vector
+                new_start = new_mid - arrow_offset*norm_vector
+                new_end = new_mid + arrow_offset*norm_vector
                 ret += f"\\draw[-latexslim] ({new_start[0]:.1f},{new_start[1]:.1f}) to ({new_end[0]:.1f},{new_end[1]:.1f});\n"
                 ret += f"\\node at ({new_mid_node[0]:.1f}, {new_mid_node[1]:.1f}) {{${labl}$}};\n"
                 
@@ -347,12 +401,27 @@ def get_latex_line_draw(x1, y1, x2, y2,
                 flow_dir = flow_direction[cur_mode-2]
                 ret += f"\\draw ({x1:.1f},{y1:.1f}) to[cisource, f{flow_dir}=${labl}$] ({x2:.1f},{y2:.1f});\n"
 
+            # Advanced measurement positioning to avoid controlled source labels
             v_plot_extra = ""
             if not meas_comp_same_direction:
                 x1, y1, x2, y2 = x2, y2, x1, y1
                 v_plot_extra = "^"
             if measure_type == MEAS_TYPE_VOLTAGE:
-                ret += f"\\ctikzset{{american}};\n\\draw ({x1:.1f},{y1:.1f}) to[open, v{v_plot_extra}=${measure_label}$] ({x2:.1f},{y2:.1f});\n\\ctikzset{{european}};\n"
+                ret += f"\\draw ({x1:.1f},{y1:.1f}) to[open, v{v_plot_extra}=${measure_label}$] ({x2:.1f},{y2:.1f});\n"
+            elif measure_type == MEAS_TYPE_CURRENT:
+                # Intelligent current measurement placement based on controlled source position
+                if cur_mode == CUR_MODE_1:
+                    # If controlled source is above, place current measurement below
+                    enhanced_meas_mode = CUR_MODE_6  # Bottom placement
+                elif cur_mode == CUR_MODE_2:
+                    # If controlled source is left, place current measurement on right
+                    enhanced_meas_mode = CUR_MODE_5  # Right placement
+                else:
+                    # For inline modes, use alternative positioning
+                    enhanced_meas_mode = CUR_MODE_5 if cur_mode in [CUR_MODE_3, CUR_MODE_5] else CUR_MODE_6
+                
+                flow_dir = flow_direction[enhanced_meas_mode-2]
+                ret += f"\\draw ({x1:.1f},{y1:.1f}) to[cisource, f{flow_dir}=${measure_label}$] ({x2:.1f},{y2:.1f});\n"
                 
             return ret
 
@@ -465,6 +534,12 @@ class Circuit:
         self._init_degree() # initialize degree
         self._check_circuit_valid_by_degree() # check if the circuit is valid via degree
         self._init_netlist() # init netlist, and check if the circuit is valid by the topology
+        
+        # Apply adaptive spacing after all components are set up
+        if self.valid:
+            self._calculate_adaptive_spacing()
+            self._adjust_font_size()
+            self._optimize_measurement_placement()
 
     def _init_degree(self):
         self.degree = np.zeros((self.m, self.n))
@@ -888,7 +963,7 @@ class Circuit:
         if int(self.note[1:]) <= 9:
             raise NotImplementedError
         elif int(self.note[1:]) > 9:
-            latex_template = LATEX_TEMPLATES["v9"]
+            latex_template = LATEX_TEMPLATES["v11"]
         else:
             raise NotImplementedError
         
@@ -903,6 +978,199 @@ class Circuit:
             latex_code = latex_code.replace("<font>", self.latex_font_size)
 
         return latex_code
+
+    def _calculate_adaptive_spacing(self):
+        """Calculate adaptive spacing based on circuit complexity to prevent overlaps"""
+        
+        # Count components that need extra space
+        measurement_count = 0
+        complex_component_count = 0
+        
+        for i in range(self.m-1):
+            for j in range(self.n):
+                if self.has_vedge[i][j]:
+                    if self.vcomp_measure[i][j] != MEAS_TYPE_NONE:
+                        measurement_count += 1
+                    if self.vcomp_type[i][j] in [TYPE_VCCS, TYPE_VCVS, TYPE_CCCS, TYPE_CCVS]:
+                        complex_component_count += 1
+                        
+        for i in range(self.m):
+            for j in range(self.n-1):
+                if self.has_hedge[i][j]:
+                    if self.hcomp_measure[i][j] != MEAS_TYPE_NONE:
+                        measurement_count += 1
+                    if self.hcomp_type[i][j] in [TYPE_VCCS, TYPE_VCVS, TYPE_CCCS, TYPE_CCVS]:
+                        complex_component_count += 1
+        
+        # Base spacing
+        base_h_spacing = 3.0
+        base_v_spacing = 3.0
+        
+        # Calculate complexity factor
+        total_edges = len(self.horizontal_dis) * len(self.vertical_dis)
+        complexity_factor = 1 + (measurement_count + complex_component_count) / max(total_edges, 1)
+        
+        # Adaptive spacing - reduced multipliers for more reasonable spacing
+        adaptive_h_spacing = base_h_spacing * max(1.1, complexity_factor * 0.8)
+        adaptive_v_spacing = base_v_spacing * max(1.1, complexity_factor * 0.8)
+        
+        # Apply adaptive spacing with some randomness
+        for i in range(len(self.horizontal_dis)):
+            if i > 0:
+                self.horizontal_dis[i] = self.horizontal_dis[i-1] + adaptive_h_spacing + np.random.uniform(-0.3, 0.3)
+        
+        for i in range(len(self.vertical_dis)):
+            if i > 0:
+                self.vertical_dis[i] = self.vertical_dis[i-1] + adaptive_v_spacing + np.random.uniform(-0.3, 0.3)
+        
+        print(f"Adaptive spacing applied: h={adaptive_h_spacing:.2f}, v={adaptive_v_spacing:.2f}, complexity_factor={complexity_factor:.2f}")
+
+    def _adjust_font_size(self):
+        """Adjust font size based on circuit complexity to reduce overlap"""
+        
+        # Count total components and measurements
+        total_components = 0
+        total_measurements = 0
+        
+        for i in range(self.m-1):
+            for j in range(self.n):
+                if self.has_vedge[i][j] and self.vcomp_type[i][j] != TYPE_OPEN:
+                    total_components += 1
+                    if self.vcomp_measure[i][j] != MEAS_TYPE_NONE:
+                        total_measurements += 1
+                        
+        for i in range(self.m):
+            for j in range(self.n-1):
+                if self.has_hedge[i][j] and self.hcomp_type[i][j] != TYPE_OPEN:
+                    total_components += 1
+                    if self.hcomp_measure[i][j] != MEAS_TYPE_NONE:
+                        total_measurements += 1
+        
+        # Calculate density
+        grid_area = self.m * self.n
+        component_density = total_components / max(grid_area, 1)
+        measurement_density = total_measurements / max(total_components, 1)
+        
+        # Adjust font size based on density
+        if component_density > 0.7 or measurement_density > 0.4:
+            self.latex_font_size = "\\small"
+        elif component_density > 0.5 or measurement_density > 0.3:
+            self.latex_font_size = "\\normalsize"
+        elif component_density > 0.3 or measurement_density > 0.2:
+            self.latex_font_size = "\\large"
+        else:
+            self.latex_font_size = "\\Large"
+            
+        print(f"Font size adjusted to: {self.latex_font_size}, component_density={component_density:.2f}, measurement_density={measurement_density:.2f}")
+
+    def _optimize_measurement_placement(self):
+        """Advanced optimization to prevent overlaps between measurements and controlled sources"""
+        
+        # Track which grid positions have measurements and controlled sources
+        measurement_map = np.zeros((self.m, self.n), dtype=int)  # 0=none, 1=voltage, 2=current
+        controlled_source_map = np.zeros((self.m, self.n), dtype=int)  # 0=none, 1=has controlled source
+        component_complexity_map = np.zeros((self.m, self.n), dtype=float)  # Track component complexity
+        
+        # Map existing measurements, controlled sources, and calculate complexity
+        for i in range(self.m-1):
+            for j in range(self.n):
+                if self.has_vedge[i][j]:
+                    component_complexity = 0
+                    if self.vcomp_measure[i][j] != MEAS_TYPE_NONE:
+                        measurement_map[i][j] = self.vcomp_measure[i][j]
+                        measurement_map[i+1][j] = self.vcomp_measure[i][j]  # Mark both endpoints
+                        component_complexity += 0.5
+                    if self.vcomp_type[i][j] in [TYPE_VCCS, TYPE_VCVS, TYPE_CCCS, TYPE_CCVS]:
+                        controlled_source_map[i][j] = 1
+                        controlled_source_map[i+1][j] = 1  # Mark both endpoints
+                        component_complexity += 1.0  # Controlled sources add more complexity
+                    if self.vcomp_type[i][j] in [TYPE_VOLTAGE_SOURCE, TYPE_CURRENT_SOURCE]:
+                        component_complexity += 0.3  # Regular sources add some complexity
+                    
+                    component_complexity_map[i][j] += component_complexity
+                    component_complexity_map[i+1][j] += component_complexity
+                        
+        for i in range(self.m):
+            for j in range(self.n-1):
+                if self.has_hedge[i][j]:
+                    component_complexity = 0
+                    if self.hcomp_measure[i][j] != MEAS_TYPE_NONE:
+                        measurement_map[i][j] = self.hcomp_measure[i][j]
+                        measurement_map[i][j+1] = self.hcomp_measure[i][j]  # Mark both endpoints
+                        component_complexity += 0.5
+                    if self.hcomp_type[i][j] in [TYPE_VCCS, TYPE_VCVS, TYPE_CCCS, TYPE_CCVS]:
+                        controlled_source_map[i][j] = 1
+                        controlled_source_map[i][j+1] = 1  # Mark both endpoints
+                        component_complexity += 1.0  # Controlled sources add more complexity
+                    if self.hcomp_type[i][j] in [TYPE_VOLTAGE_SOURCE, TYPE_CURRENT_SOURCE]:
+                        component_complexity += 0.3  # Regular sources add some complexity
+                    
+                    component_complexity_map[i][j] += component_complexity
+                    component_complexity_map[i][j+1] += component_complexity
+        
+        # Advanced conflict resolution based on component complexity and proximity
+        conflict_resolved = 0
+        high_conflict_areas = []
+        
+        for i in range(self.m):
+            for j in range(self.n):
+                # Check expanded 5x5 neighborhood for more comprehensive conflict detection
+                local_measurements = 0
+                local_controlled = 0
+                local_complexity = 0
+                
+                for di in range(-2, 3):
+                    for dj in range(-2, 3):
+                        ni, nj = i + di, j + dj
+                        if 0 <= ni < self.m and 0 <= nj < self.n:
+                            weight = 1.0 / (abs(di) + abs(dj) + 1)  # Distance-weighted
+                            if measurement_map[ni][nj] > 0:
+                                local_measurements += weight
+                            if controlled_source_map[ni][nj] > 0:
+                                local_controlled += weight
+                            local_complexity += component_complexity_map[ni][nj] * weight
+                
+                # Identify high-conflict areas with sophisticated criteria
+                if (local_measurements > 1.5 and local_controlled > 0.5) or local_complexity > 2.0:
+                    high_conflict_areas.append((i, j, local_complexity))
+        
+        # Sort conflict areas by complexity (resolve most complex first)
+        high_conflict_areas.sort(key=lambda x: x[2], reverse=True)
+        
+        for i, j, complexity in high_conflict_areas[:10]:  # Limit to top 10 most complex areas
+            # Advanced conflict resolution strategy
+            
+            # Priority 1: Remove current measurements from controlled source areas
+            edges_to_check = []
+            if i > 0 and j < self.n:
+                edges_to_check.append(('v', i-1, j))
+            if i < self.m-1 and j < self.n:
+                edges_to_check.append(('v', i, j))
+            if j > 0 and i < self.m:
+                edges_to_check.append(('h', i, j-1))
+            if j < self.n-1 and i < self.m:
+                edges_to_check.append(('h', i, j))
+            
+            for edge_type, ei, ej in edges_to_check:
+                if edge_type == 'v' and self.has_vedge[ei][ej]:
+                    # If both controlled source and current measurement, prioritize controlled source
+                    if (self.vcomp_type[ei][ej] in [TYPE_VCCS, TYPE_CCCS] and 
+                        self.vcomp_measure[ei][ej] == MEAS_TYPE_CURRENT):
+                        self.vcomp_measure[ei][ej] = MEAS_TYPE_NONE
+                        self.vcomp_measure_label[ei][ej] = -1
+                        conflict_resolved += 1
+                        print(f"Removed current measurement from controlled source at vedge ({ei},{ej})")
+                elif edge_type == 'h' and self.has_hedge[ei][ej]:
+                    # If both controlled source and current measurement, prioritize controlled source
+                    if (self.hcomp_type[ei][ej] in [TYPE_VCCS, TYPE_CCCS] and 
+                        self.hcomp_measure[ei][ej] == MEAS_TYPE_CURRENT):
+                        self.hcomp_measure[ei][ej] = MEAS_TYPE_NONE
+                        self.hcomp_measure_label[ei][ej] = -1
+                        conflict_resolved += 1
+                        print(f"Removed current measurement from controlled source at hedge ({ei},{ej})")
+        
+        print(f"Advanced measurement placement optimized: {conflict_resolved} potential conflicts resolved")
+        print(f"Identified {len(high_conflict_areas)} high-conflict areas")
 
 def gen_circuit(note="v1", id=""):
 
@@ -1171,7 +1439,8 @@ def gen_circuit(note="v1", id=""):
         print(f"vcomp_value: {vcomp_value}\n\nhcomp_value: {hcomp_value}")
         print(f"vcomp_value_unit: {vcomp_value_unit}\n\nhcomp_value_unit: {hcomp_value_unit}")
 
-        unit_choices = [UNIT_MODE_1]*10 + [UNIT_MODE_k]*4 + [UNIT_MODE_m]*2
+        # Simplified unit choices - only use base units (no k, m, etc.)
+        unit_choices = [UNIT_MODE_1]  # Only use base units, no scaling
         vcomp_value_unit = np.random.choice(unit_choices, size=(m-1, n))
         hcomp_value_unit = np.random.choice(unit_choices, size=(m, n-1))
         
@@ -1241,8 +1510,8 @@ def gen_circuit(note="v1", id=""):
         for op, dis in zip(num_grid_options, num_grid_dis):
             num_grid_choices += [op]*dis
  
-        num_comp_dis = [10, 5, 5, 28, 0, 0, 5, 0, 0, 0, 0]  # Short, V, I, R, C, L, Open, VCCS, VCVS, CCCS, CCVS
-        num_comp_dis_outer = [10, 5, 5, 20, 0, 0, 0, 2, 2, 2, 2]    # in the outer loop: no <open>
+        num_comp_dis = [8, 4, 4, 20, 0, 0, 8, 0, 0, 0, 0]  # Short, V, I, R, C, L, Open, VCCS, VCVS, CCCS, CCVS - Reduced density
+        num_comp_dis_outer = [8, 4, 4, 16, 0, 0, 0, 1, 1, 1, 1]    # in the outer loop: no <open> - Reduced complexity
         num_comp_choices = []
         num_comp_choices_outer = []
         for op, dis in zip(range(11), num_comp_dis):
@@ -1250,22 +1519,22 @@ def gen_circuit(note="v1", id=""):
         for op, dis in zip(range(11), num_comp_dis_outer):
             num_comp_choices_outer += [op]*dis
         
-        vertical_dis_mean, vertical_dis_std = 3, 0.5
-        horizontal_dis_mean, horizontal_dis_std = 3, 0.5
+        vertical_dis_mean, vertical_dis_std = 3.2, 0.3  # Moderate spacing
+        horizontal_dis_mean, horizontal_dis_std = 3.2, 0.3  # Moderate spacing
 
         comp_mean_value = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         comp_max_value = [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
 
-        unit_dis = [10, 4, 2]
-        unit_choices = [UNIT_MODE_1]*unit_dis[0] + [UNIT_MODE_k]*unit_dis[1] + [UNIT_MODE_m]*unit_dis[2]
+        # Simplified unit choices - only use base units (no k, m, etc.)
+        unit_choices = [UNIT_MODE_1]  # Only use base units, no scaling
 
-        meas_dis = [10, 1, 1]
+        meas_dis = [20, 1, 1]  # Further reduced measurement frequency to prevent overlap
         meas_choices = [MEAS_TYPE_NONE]*meas_dis[0] + [MEAS_TYPE_VOLTAGE]*meas_dis[1] + [MEAS_TYPE_CURRENT]*meas_dis[2]
         meas_dir_prob = 0.5
 
         meas_label_choices = range(-1, 10)
 
-        use_value_annotation_prob = 0.8
+        use_value_annotation_prob = 0.9  # Increased to favor value annotation over symbolic labels
 
         # Get the grid
         m = np.random.choice(num_grid_choices)

@@ -21,8 +21,8 @@ args = parser.parse_args()
 label_key = "spice"
 
 note = args.note
-file_path = f"ppm_construction/data_syn/data/{note}.json"
-dataset_path = "datasets/{}".format(note)
+file_path = f"../../data_syn/data/{note}.json"
+dataset_path = "../../../datasets/{}".format(note)
 img_suffix = ".jpg"
 
 def complie_latex_codes(latex_codes, output_dir, recompile=True):
@@ -143,7 +143,7 @@ def main():
 
     print(f"Compiled {len(done)} files, {len(not_done)} files not compiled ...")
 
-    make_datasets(data, dataset_path, zoom_x=1, zoom_y=1, rotation_angle=0, rm_suffixs=[])
+    make_datasets(data, dataset_path, zoom_x=3, zoom_y=3, rotation_angle=0, rm_suffixs=[])
 
 if __name__ == "__main__":
     # debug()

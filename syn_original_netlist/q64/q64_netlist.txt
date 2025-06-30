@@ -1,0 +1,21 @@
+.title Active DC Circuit
+I1 0 1 31
+R1 3 0 17
+R2 2 1 2
+R3 4 1 30
+R4 5 2 50
+R5 3 N34 11
+VI1 N34 4 0
+R6 6 3 14
+R7 5 4 96
+R8 8 5 1
+R9 6 7 70
+R10 8 7 43
+
+
+.control
+op
+print i(VI1) ; measurement of I3
+print v(6, 7) ; measurement of U0
+.endc
+.end

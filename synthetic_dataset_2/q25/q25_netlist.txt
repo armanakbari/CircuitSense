@@ -1,0 +1,15 @@
+.title Active DC Circuit
+R1 1 0 97
+R2 3 0 23
+R3 1 2 15
+I1 1 4 9
+I2 2 5 3
+R4 3 4 69
+R5 5 4 74
+
+
+.control
+op
+print -v(1) ; measurement of U0
+.endc
+.end

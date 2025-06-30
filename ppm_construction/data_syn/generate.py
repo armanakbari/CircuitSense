@@ -106,9 +106,22 @@ def main(args):
 
 def stat(args):
     save_path = args.save_path
+    
+    # Check if file exists and has content
+    if not os.path.exists(save_path):
+        print("No data file found, skipping statistics")
+        return
+        
     with open(save_path, "r", encoding='utf-8') as f:
-        # data = json.load(f)
-        data = [json.loads(line) for line in f.readlines()]
+        lines = f.readlines()
+        if not lines:
+            print("No data found, skipping statistics")
+            return
+        data = [json.loads(line) for line in lines if line.strip()]
+    
+    if not data:
+        print("No valid data found, skipping statistics")
+        return
     
     stat_infos = {
         "num_nodes": [],
@@ -141,19 +154,25 @@ def stat(args):
         stat_info = item["stat"]
         for key in stat_info:
             stat_infos[key].append(stat_info[key])
+    
     for key in stat_infos:
-        print(f"{key}:\n\tmean: {np.mean(stat_infos[key])}\n\tstd: {np.std(stat_infos[key])}\n\tmax: {np.max(stat_infos[key])}\n\tmin: {np.min(stat_infos[key])}\n")
-        mmean = float(np.mean(stat_infos[key]))
-        sstd = float(np.std(stat_infos[key]))
-        mmax = float(np.max(stat_infos[key]))
-        mmin = float(np.min(stat_infos[key]))
+        if len(stat_infos[key]) > 0:
+            print(f"{key}:\n\tmean: {np.mean(stat_infos[key])}\n\tstd: {np.std(stat_infos[key])}\n\tmax: {np.max(stat_infos[key])}\n\tmin: {np.min(stat_infos[key])}\n")
+            mmean = float(np.mean(stat_infos[key]))
+            sstd = float(np.std(stat_infos[key]))
+            mmax = float(np.max(stat_infos[key]))
+            mmin = float(np.min(stat_infos[key]))
 
-        stat_results[key] = {
-            "mean": mmean,
-            "std": sstd,
-            "max": mmax,
-            "min": mmin
-        }
+            stat_results[key] = {
+                "mean": mmean,
+                "std": sstd,
+                "max": mmax,
+                "min": mmin
+            }
+        else:
+            print(f"{key}: No data")
+            stat_results[key] = {"mean": 0, "std": 0, "max": 0, "min": 0}
+    
     with open(save_path.replace(".json", "_stat.json"), "w", encoding='utf-8') as f:
         f.write(json.dumps(stat_results, ensure_ascii=False, indent=4))
     
