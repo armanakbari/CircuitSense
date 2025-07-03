@@ -177,8 +177,14 @@ def get_latex_line_draw(x1, y1, x2, y2,
                 if label_subscript_type == LABEL_TYPE_NUMBER:
                     if type_number == TYPE_RESISTOR:
                         labl = f"{comp_label_main}_{{ {int(label_subscript)} }}" # e.g. R_{1}
-                    elif type_number == TYPE_VOLTAGE_SOURCE or type_number == TYPE_CURRENT_SOURCE:
+                    elif type_number == TYPE_CAPACITOR:
+                        labl = f"{comp_label_main}_{{ {int(label_subscript)} }}" # e.g. C_{1}
+                    elif type_number == TYPE_INDUCTOR:
+                        labl = f"{comp_label_main}_{{ {int(label_subscript)} }}" # e.g. L_{1}
+                    elif type_number == TYPE_VOLTAGE_SOURCE:
                         labl = f"{comp_label_main}_{{ S{int(label_subscript)} }}" # e.g. U_{S1}
+                    elif type_number == TYPE_CURRENT_SOURCE:
+                        labl = f"{comp_label_main}_{{ {int(label_subscript)} }}" # e.g. I_{1}
 
                 elif label_subscript_type == LABEL_TYPE_STRING:
                     labl = f"{comp_label_main}_{{ {label_subscript} }}" # e.g. R_{load}
@@ -593,7 +599,7 @@ class Circuit:
     def _check_conflict_component_measure(self, comp_type, comp_measure):
         conflict_pairs = [
             (TYPE_SHORT, MEAS_TYPE_VOLTAGE),
-            (TYPE_OPEN, MEAS_TYPE_CURRENT),
+            (TYPE_OPEN, MEAS_TYPE_CURRENT), 
             (TYPE_VOLTAGE_SOURCE, MEAS_TYPE_VOLTAGE),
             (TYPE_VCVS, MEAS_TYPE_VOLTAGE),
             (TYPE_CCVS, MEAS_TYPE_VOLTAGE),
@@ -773,12 +779,14 @@ class Circuit:
                 
                 # Create explicit unique device names
                 type_str = SPICE_PREFFIX[br['type']]
-                if br['type'] in comp_counters:
-                    comp_counters[br['type']] += 1
-                    device_name = f"{type_str}{comp_counters[br['type']]}"
-                else:
-                    device_name = type_str  # For components without counters (like shorts)
-                
+                # Use the pre-assigned label so that the numeric subscript
+                # (e.g. R5, C2, V1) is identical in both the SPICE netlist
+                # and the LaTeX/tikz visualization.  This guarantees that a
+                # component called R1 in the netlist is the *same* R1 shown
+                # in the diagram.
+                label_num = int(br["label"]) if br["label"] != -1 else 1
+                device_name = f"{type_str}{label_num}"
+
                 print(br["type"], br["label"], br["n1"], br["n2"], br["value"], br["value_unit"])
                 print(f"Device name: {device_name}")
 
@@ -788,7 +796,7 @@ class Circuit:
                     vmeas_str = f"VI{vmeas_counter}"
                     spice_str += "%s %s %s %s\n" % (vmeas_str, br["n1"], br["n2"], 0)
                 
-                if br["type"] in [TYPE_VOLTAGE_SOURCE, TYPE_CURRENT_SOURCE, TYPE_RESISTOR]:
+                if br["type"] in [TYPE_VOLTAGE_SOURCE, TYPE_CURRENT_SOURCE, TYPE_RESISTOR, TYPE_CAPACITOR, TYPE_INDUCTOR]:
                     if br["measure"] == MEAS_TYPE_CURRENT:
                         mid_node = "N%s%s" % (br['n1'], br['n2'])
                         vmeas_counter += 1
@@ -884,9 +892,86 @@ class Circuit:
                 # exit()
                 spice_str = SPICE_TEMPLATES[self.note].format(components=spice_str, simulation=sim_str)   
 
-            else:   # high order circuit
-                # TODO: add transient simulation
-                raise NotImplementedError        
+            else:   # higher order circuits with capacitors/inductors
+                # Calculate appropriate time scale based on component values
+                time_constants = []
+                max_resistance = 0
+                max_capacitance = 0
+                max_inductance = 0
+                
+                # Analyze circuit components to determine time scale
+                for br in self.branches:
+                    if br["type"] == TYPE_RESISTOR:
+                        max_resistance = max(max_resistance, br["value"])
+                    elif br["type"] == TYPE_CAPACITOR:
+                        max_capacitance = max(max_capacitance, br["value"] * 1e-6)  # Convert to µF
+                    elif br["type"] == TYPE_INDUCTOR:
+                        max_inductance = max(max_inductance, br["value"] * 1e-3)   # Convert to mH
+                
+                # Use reasonable defaults if components are missing
+                if max_resistance == 0:
+                    max_resistance = 1000  # Default 1kΩ
+                if max_capacitance == 0:
+                    max_capacitance = 1e-6  # Default 1µF
+                if max_inductance == 0:
+                    max_inductance = 1e-3   # Default 1mH
+                
+                # Calculate time constants: τ_RC = RC, τ_RL = L/R
+                if max_capacitance > 0:
+                    time_constants.append(max_resistance * max_capacitance)
+                if max_inductance > 0:
+                    time_constants.append(max_inductance / max_resistance)
+                
+                # Determine simulation time parameters
+                if time_constants:
+                    max_tc = max(time_constants)
+                    # Step time: 1/100th of smallest time constant for accuracy
+                    step_time = min(time_constants) / 100 if time_constants else 1e-6
+                    # Stop time: 5x largest time constant to reach steady state
+                    stop_time = max_tc * 5
+                    
+                    # Ensure reasonable bounds
+                    step_time = max(step_time, 1e-9)   # Min 1ns
+                    step_time = min(step_time, 1e-4)   # Max 100µs
+                    stop_time = max(stop_time, 1e-6)   # Min 1µs 
+                    stop_time = min(stop_time, 1.0)    # Max 1s
+                else:
+                    step_time = 1e-6   # Default 1µs
+                    stop_time = 1e-3   # Default 1ms
+                
+                # Generate transient simulation commands
+                sim_str = f".control\ntran {step_time:.2e} {stop_time:.2e}\n"
+                current_meas_counter = 0  # Counter for current measurements in simulation
+                
+                # Generate measurement commands (same logic as DC but for transient)
+                for br in self.branches:
+                    if br["measure_label"] == -1:
+                        ms_label_str = ""
+                    else:
+                        ms_label_str = str(int(br["measure_label"]))
+
+                    if br["measure"] == MEAS_TYPE_VOLTAGE:
+                        print(f"#n1: {br['n1']}, n2: {br['n2']}")
+                        meas_n1, meas_n2 = br["n1"], br["n2"]
+                        if not br["meas_comp_same_direction"]:
+                            meas_n1, meas_n2 = meas_n2, meas_n1
+                        if str(meas_n1) == '0':
+                            sim_str += "print -v(%s) ; measurement of U%s\n" % (meas_n2, ms_label_str)
+                        elif str(meas_n2) == '0':
+                            sim_str += "print v(%s) ; measurement of U%s\n" % (meas_n1, ms_label_str)
+                        else:
+                            sim_str += "print v(%s, %s) ; measurement of U%s\n" % (meas_n1, meas_n2, ms_label_str)
+                    elif br["measure"] == MEAS_TYPE_CURRENT:
+                        print('#')
+                        current_meas_counter += 1
+                        vmeas_str = f"VI{current_meas_counter}"
+                        sim_str += "print i(%s) ; measurement of I%s\n" % (vmeas_str, ms_label_str)
+                
+                sim_str += ".endc\n"
+                print(f"Transient simulation: step={step_time:.2e}s, stop={stop_time:.2e}s")
+                print(f"Time constants: RC={max_resistance * max_capacitance:.2e}s, RL={max_inductance / max_resistance:.2e}s")
+                print(f"spice_str: {spice_str}, \n\nsim_str: {sim_str}\n\n")
+                spice_str = SPICE_TEMPLATES[self.note].format(components=spice_str, simulation=sim_str)        
         else:
             raise NotImplementedError
 
@@ -972,6 +1057,39 @@ class Circuit:
             for j in range(self.n):
                 latex_code_main += self._draw_horizontal_edge(i,j)
                 latex_code_main += self._draw_vertical_edge(i,j)
+        
+        # ADD NODE LABELS TO CIRCUIT IMAGES FOR MLLM BENCHMARK
+        # This adds numbered labels at circuit junctions so MLLMs can identify nodes
+        node_label_code = ""
+        for i in range(self.m):
+            for j in range(self.n):
+                node_num = int(self.grid_nodes[i][j])
+                x_coord = self.horizontal_dis[j]
+                y_coord = self.vertical_dis[i]
+                
+                # Only label nodes that are actually connected (not isolated)
+                is_connected = False
+                
+                # Check if this grid position has any connections
+                if i > 0 and self.has_vedge[i-1][j]:  # Edge above
+                    is_connected = True
+                if i < self.m-1 and self.has_vedge[i][j]:  # Edge below  
+                    is_connected = True
+                if j > 0 and self.has_hedge[i][j-1]:  # Edge to left
+                    is_connected = True
+                if j < self.n-1 and self.has_hedge[i][j]:  # Edge to right
+                    is_connected = True
+                
+                if is_connected:
+                    # Add node label with small circle background for better visibility
+                    if node_num == 0:
+                        # Ground node - use special symbol
+                        node_label_code += f"\\node[circle, draw=black, fill=black, inner sep=2pt] at ({x_coord:.1f},{y_coord:.1f}) {{\\textcolor{{white}}{{\\tiny 0}}}};\n"
+                    else:
+                        # Regular node - use white background circle
+                        node_label_code += f"\\node[circle, draw=blue, fill=white, inner sep=2pt] at ({x_coord:.1f},{y_coord:.1f}) {{\\textcolor{{blue}}{{\\tiny {node_num}}}}};\n"
+        
+        latex_code_main += node_label_code
         latex_code = latex_template.replace("<main>", latex_code_main)
         
         if int(self.note[1:]) >= 8:
@@ -1172,7 +1290,7 @@ class Circuit:
         print(f"Advanced measurement placement optimized: {conflict_resolved} potential conflicts resolved")
         print(f"Identified {len(high_conflict_areas)} high-conflict areas")
 
-def gen_circuit(note="v1", id=""):
+def gen_circuit(note="v1", id="", symbolic=False):
 
     ## v1-9 old version
     if int(note[1:]) <= 9:
@@ -1510,8 +1628,8 @@ def gen_circuit(note="v1", id=""):
         for op, dis in zip(num_grid_options, num_grid_dis):
             num_grid_choices += [op]*dis
  
-        num_comp_dis = [8, 4, 4, 20, 0, 0, 8, 0, 0, 0, 0]  # Short, V, I, R, C, L, Open, VCCS, VCVS, CCCS, CCVS - Reduced density
-        num_comp_dis_outer = [8, 4, 4, 16, 0, 0, 0, 1, 1, 1, 1]    # in the outer loop: no <open> - Reduced complexity
+        num_comp_dis = [8, 4, 4, 20, 3, 3, 8, 0, 0, 0, 0]  # Short, V, I, R, C, L, Open, VCCS, VCVS, CCCS, CCVS - Enabled C and L
+        num_comp_dis_outer = [8, 4, 4, 16, 2, 2, 0, 1, 1, 1, 1]    # in the outer loop: no <open> - Enabled C and L with reduced complexity
         num_comp_choices = []
         num_comp_choices_outer = []
         for op, dis in zip(range(11), num_comp_dis):
@@ -1716,13 +1834,12 @@ def gen_circuit(note="v1", id=""):
                         vcomp_value_unit=vcomp_value_unit, hcomp_value_unit=hcomp_value_unit, \
                         vcomp_measure=vcomp_measure, hcomp_measure=hcomp_measure, \
                         vcomp_measure_label=vcomp_measure_label, hcomp_measure_label=hcomp_measure_label, \
-                        use_value_annotation= True,  #use_value_annotation, 
+                        use_value_annotation=not symbolic,
                         note=note, id=id,
                         vcomp_direction=vcomp_direction, hcomp_direction=hcomp_direction,
                         vcomp_measure_direction=vcomp_measure_direction, hcomp_measure_direction=hcomp_measure_direction,
                         vcomp_control_meas_label=vcomp_control_meas_label, hcomp_control_meas_label=hcomp_control_meas_label,
                         label_numerical_subscript=label_numerical_subscript)
-
 
     else:
         circ = Circuit()

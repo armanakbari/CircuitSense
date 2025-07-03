@@ -20,11 +20,12 @@ def parse_args():
     parser.add_argument("--gen_num", type=int, default=1000)
     parser.add_argument("--save_path", type=str, default="./data/grid/test.json")
     parser.add_argument("--num_proc", type=int, default=8)
+    parser.add_argument("--symbolic", action="store_true", help="Generate symbolic circuits (component names instead of values)")
 
     args = parser.parse_args()
     return args
 
-def threading_task(task_id, seed, note, gen_num, save_path):
+def threading_task(task_id, seed, note, gen_num, save_path, symbolic=False):
     # seed=42
     np.random.seed(seed)
     random.seed(seed)
@@ -33,7 +34,7 @@ def threading_task(task_id, seed, note, gen_num, save_path):
         while True:
             id = f"{task_id}_{cnt+1}"
             try:
-                circ = gen_circuit(note, id=id)
+                circ = gen_circuit(note, id=id, symbolic=symbolic)
                 latex_code = circ.to_latex()
                 spice_code = circ._to_SPICE()
             except Exception as e:
@@ -82,6 +83,7 @@ def main(args):
     gen_num = args.gen_num
     save_path = args.save_path
     num_proc = args.num_proc
+    symbolic = args.symbolic
 
     use_concurrent = True
 
@@ -91,12 +93,12 @@ def main(args):
     if use_concurrent:
         with ThreadPoolExecutor(max_workers=num_proc) as executor:
             for i in range(1, num_proc+1):
-                executor.submit(threading_task, i, i, note, gen_num // num_proc, save_path)
+                executor.submit(threading_task, i, i, note, gen_num // num_proc, save_path, symbolic)
 
     else:
         threads = []
         for i in range(1, num_proc+1):
-            thread = threading.Thread(target=threading_task, args=(i, i, note, gen_num // num_proc, save_path))
+            thread = threading.Thread(target=threading_task, args=(i, i, note, gen_num // num_proc, save_path, symbolic))
             threads.append(thread)
             thread.start()
 

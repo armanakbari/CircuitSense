@@ -118,93 +118,129 @@ def generate_questions_from_measurements(measurements: List[Dict[str, str]], cir
     
     return questions
 
-def simulate_circuit_for_answers(cleaned_netlist: str, measurements: List[Dict[str, str]]) -> Dict[str, float]:
+def simulate_circuit_for_answers(original_netlist: str, measurements: List[Dict[str, str]]) -> Dict[str, float]:
     """
-    Run SPICE simulation to get ground truth answers.
+    Run NgSpice simulation (DC or transient) to obtain ground-truth answers for the
+    requested measurement commands.
+
+    The function now automatically detects whether the original netlist uses a
+    transient analysis (``.tran``) or a DC operating-point analysis (``.op``)
+    and builds an auxiliary netlist accordingly.  For transient analysis we ask
+    NgSpice to print only the *last* simulation value via the ``[-1]`` vector
+    index so that the parser can reliably capture a single scalar value.
     
     Args:
-        cleaned_netlist: Cleaned SPICE netlist
-        measurements: List of measurement commands
+        original_netlist: The SPICE netlist produced by the generator (contains
+            components, a ``.control`` block and ``.end``).
+        measurements:    A list of measurement dictionaries (output of
+            ``parse_control_block``).
         
     Returns:
-        Dictionary mapping measurement commands to values
+        A mapping {measurement_command -> numeric_value}.  If a value cannot be
+        extracted it will be set to ``None``.
     """
-    answers = {}
+
+    answers: Dict[str, float] = {}
     
     try:
-        # Create mapping from original to cleaned component names
-        # VI1 -> V_meas1, VI2 -> V_meas2, etc.
-        component_mapping = {}
-        meas_counter = 1
-        for line in cleaned_netlist.split('\n'):
-            if line.strip().startswith('V_meas'):
-                component_mapping[f'VI{meas_counter}'] = f'V_meas{meas_counter}'
-                meas_counter += 1
-        
-        # Create full SPICE netlist with .control block
-        full_netlist = cleaned_netlist + "\n\n.control\nop\n"
-        
-        # Add measurement commands with proper component name mapping
-        mapped_commands = {}
+        # ---------------------------------------------------------------
+        # Determine whether this is a transient or DC analysis
+        # ---------------------------------------------------------------
+        tran_match = re.search(r'\btran\s+[^\n]*', original_netlist, re.IGNORECASE)
+        is_transient = tran_match is not None
+        tran_line = tran_match.group(0).strip() if tran_match else ''
+
+        # ---------------------------------------------------------------
+        # Split the netlist at the first .control (if any) to reuse only
+        # the component section.  We reconstruct a fresh .control block so
+        # that we have full control over the print statements.
+        # ---------------------------------------------------------------
+        parts = re.split(r'(?i)\.control', original_netlist, maxsplit=1)
+        components_part = parts[0].rstrip()  # everything before the first .control
+
+        if not components_part.strip():
+            # Fallback – no .control block found; use the whole netlist
+            components_part = original_netlist.strip()
+
+        # ---------------------------------------------------------------
+        # Build new .control block
+        # ---------------------------------------------------------------
+        control_lines = [".control"]
+        if is_transient:
+            control_lines.append(tran_line)
+        else:
+            control_lines.append("op")
+
+        # Map measurement commands -> commands inserted in print statements.
+        # For transient analysis we append '[-1]' so that NgSpice returns only
+        # the last time-point value.  We also keep track of possible leading
+        # minus sign so that we can adjust after parsing.
+        mapped_commands: Dict[str, Tuple[str, int]] = {}
+
         for meas in measurements:
-            original_command = meas['command']
-            mapped_command = original_command
-            
-            # Replace component names in current measurement commands
-            for old_name, new_name in component_mapping.items():
-                if old_name.lower() in original_command.lower():
-                    mapped_command = original_command.replace(old_name, new_name)
-                    mapped_command = mapped_command.replace(old_name.lower(), new_name.lower())
-                    break
-            
-            mapped_commands[original_command] = mapped_command
-            full_netlist += f"print {mapped_command}\n"
-            
-        full_netlist += ".endc\n.end\n"
-        
-        # Write to temporary file
+            orig_cmd = meas['command'].strip()
+            sign = 1
+            if orig_cmd.startswith('-'):
+                sign = -1
+                base_cmd = orig_cmd[1:].strip()
+            else:
+                base_cmd = orig_cmd
+
+            if is_transient:
+                # Remove whitespaces inside the expression for consistency
+                print_cmd = re.sub(r'\s+', '', base_cmd) + '[-1]'
+            else:
+                print_cmd = base_cmd
+
+            mapped_commands[orig_cmd] = (print_cmd, sign)
+            control_lines.append(f"print {print_cmd}")
+
+        control_lines.append(".endc")
+
+        # Final netlist
+        full_netlist = components_part + "\n\n" + "\n".join(control_lines) + "\n.end\n"
+
+        # ---------------------------------------------------------------
+        # Write to a temporary file and run NgSpice
+        # ---------------------------------------------------------------
         with tempfile.NamedTemporaryFile(mode='w', suffix='.cir', delete=False) as tmp_file:
             tmp_file.write(full_netlist)
             tmp_filename = tmp_file.name
         
         try:
-            # Run ngspice simulation
             result = subprocess.run(
                 ['ngspice', '-b', tmp_filename],
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=60  # allow a bit more time for transient sims
             )
-            
-            # NgSpice may return exit code 1 but still provide measurements in stdout
-            # Check if we have measurement data regardless of return code
-            output = result.stdout
-            has_measurements = False
-            
-            for meas in measurements:
-                original_command = meas['command']
-                mapped_command = mapped_commands.get(original_command, original_command)
-                
-                # Look for the measurement in output using mapped command
-                # NgSpice typically outputs: "i(v_meas1) = 1.234e-03"
-                pattern = rf"{re.escape(mapped_command)}\s*=\s*([-+]?[\d.]+(?:[eE][-+]?\d+)?)"
-                match = re.search(pattern, output, re.IGNORECASE)
+
+            output_text = result.stdout
+
+            # -------------------------------------------------------
+            # Extract measurement values from NgSpice output
+            # -------------------------------------------------------
+            for orig_cmd, (print_cmd, sign) in mapped_commands.items():
+                # Remove whitespace for robust matching
+                pattern_cmd = re.sub(r'\s+', '', print_cmd, flags=re.IGNORECASE)
+                # Regex: command (possibly lower/upper) followed by = value
+                pattern = rf"{re.escape(pattern_cmd)}\s*=\s*([-+]?[\d.]+(?:[eE][-+]?\d+)?)"
+                match = re.search(pattern, output_text, re.IGNORECASE)
                 
                 if match:
-                    value = float(match.group(1))
-                    answers[original_command] = value
-                    has_measurements = True
+                    try:
+                        value = float(match.group(1)) * sign
+                        answers[orig_cmd] = value
+                    except ValueError:
+                        answers[orig_cmd] = None
                 else:
-                    answers[original_command] = None
+                    answers[orig_cmd] = None
             
-            # Only report error if no measurements were found
-            if not has_measurements and result.returncode != 0:
+            # Report NgSpice error if no measurements were parsed successfully
+            if all(v is None for v in answers.values()) and result.returncode != 0:
                 print(f"  NgSpice error: {result.stderr}")
-                for meas in measurements:
-                    answers[meas['command']] = None
         
         finally:
-            # Clean up temporary file
             if os.path.exists(tmp_filename):
                 os.unlink(tmp_filename)
                 
