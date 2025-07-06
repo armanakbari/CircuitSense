@@ -1603,6 +1603,73 @@ def gen_circuit(note="v1", id="", symbolic=False):
         print(f"vcomp_measure_direction: {vcomp_measure_direction}\n\nhcomp_measure_direction: {hcomp_measure_direction}")
         print(f"vcomp_control_meas_label: {vcomp_control_meas_label}\n\nhcomp_control_meas_label: {hcomp_control_meas_label}")
 
+        # ------------------------------------------------------------------
+        # Enforce exactly one voltage source and zero current sources across
+        # the entire circuit (version 10).
+        #    1. Convert ANY current source (TYPE_CURRENT_SOURCE) that may have
+        #       been sampled above into a resistor.
+        #    2. Guarantee that there is precisely ONE voltage source.  If more
+        #       than one was generated, the extras are turned into resistors;
+        #       if none were generated, a random existing edge is promoted to
+        #       a voltage source.
+        # ------------------------------------------------------------------
+
+        # Step-1: eliminate current sources
+        for ii in range(m-1):
+            for jj in range(n):
+                if vcomp_type[ii][jj] == TYPE_CURRENT_SOURCE:
+                    vcomp_type[ii][jj] = TYPE_RESISTOR
+                    vcomp_value[ii][jj] = np.random.randint(min_value_r, max_value_r)
+                    print(f"Converted current source at vedge ({ii},{jj}) to resistor")
+        for ii in range(m):
+            for jj in range(n-1):
+                if hcomp_type[ii][jj] == TYPE_CURRENT_SOURCE:
+                    hcomp_type[ii][jj] = TYPE_RESISTOR
+                    hcomp_value[ii][jj] = np.random.randint(min_value_r, max_value_r)
+                    print(f"Converted current source at hedge ({ii},{jj}) to resistor")
+
+        # Step-2: collect voltage-source positions
+        voltage_positions = []  # list of tuples ('v'/'h', i, j)
+        for ii in range(m-1):
+            for jj in range(n):
+                if vcomp_type[ii][jj] == TYPE_VOLTAGE_SOURCE:
+                    voltage_positions.append(('v', ii, jj))
+        for ii in range(m):
+            for jj in range(n-1):
+                if hcomp_type[ii][jj] == TYPE_VOLTAGE_SOURCE:
+                    voltage_positions.append(('h', ii, jj))
+
+        if len(voltage_positions) == 0:
+            # Promote a random existing edge to a voltage source
+            candidate_edges = [('v', ii, jj) for ii in range(m-1) for jj in range(n) if has_vedge[ii][jj] and vcomp_type[ii][jj] != TYPE_OPEN] + \
+                              [('h', ii, jj) for ii in range(m) for jj in range(n-1) if has_hedge[ii][jj] and hcomp_type[ii][jj] != TYPE_OPEN]
+            if candidate_edges:
+                chosen_edge = random.choice(candidate_edges)
+                if chosen_edge[0] == 'v':
+                    ii, jj = chosen_edge[1], chosen_edge[2]
+                    vcomp_type[ii][jj] = TYPE_VOLTAGE_SOURCE
+                    vcomp_value[ii][jj] = np.random.randint(min_value_v, max_value_v)
+                    print(f"Promoted edge at vedge ({ii},{jj}) to voltage source")
+                else:
+                    ii, jj = chosen_edge[1], chosen_edge[2]
+                    hcomp_type[ii][jj] = TYPE_VOLTAGE_SOURCE
+                    hcomp_value[ii][jj] = np.random.randint(min_value_v, max_value_v)
+                    print(f"Promoted edge at hedge ({ii},{jj}) to voltage source")
+        elif len(voltage_positions) > 1:
+            # Keep the first voltage source and demote the rest to resistors
+            keep = voltage_positions[0]
+            for pos in voltage_positions[1:]:
+                if pos[0] == 'v':
+                    vcomp_type[pos[1]][pos[2]] = TYPE_RESISTOR
+                    vcomp_value[pos[1]][pos[2]] = np.random.randint(min_value_r, max_value_r)
+                    print(f"Demoted extra voltage source at vedge ({pos[1]},{pos[2]}) to resistor")
+                else:
+                    hcomp_type[pos[1]][pos[2]] = TYPE_RESISTOR
+                    hcomp_value[pos[1]][pos[2]] = np.random.randint(min_value_r, max_value_r)
+                    print(f"Demoted extra voltage source at hedge ({pos[1]},{pos[2]}) to resistor")
+
+        print(f"Voltage source constraint enforced: {len(voltage_positions)} initial voltage sources found")
+
         # print(f"Generating a circuit grid of size {m}x{n} with {num_volsrs} voltage sources, {num_cursrs} current sources, and {num_r} resistors.")
         circ = Circuit( m=m, n=n, \
                         vertical_dis=vertical_dis, horizontal_dis=horizontal_dis, \
@@ -1827,6 +1894,73 @@ def gen_circuit(note="v1", id="", symbolic=False):
         print(f"vcomp_measure_label: {vcomp_measure_label}\n\nhcomp_measure_label: {hcomp_measure_label}")
         print(f"vcomp_measure_direction: {vcomp_measure_direction}\n\nhcomp_measure_direction: {hcomp_measure_direction}")
         print(f"vcomp_control_meas_label: {vcomp_control_meas_label}\n\nhcomp_control_meas_label: {hcomp_control_meas_label}")
+
+        # ------------------------------------------------------------------
+        # Enforce exactly one voltage source and zero current sources across
+        # the entire circuit (version 11).
+        #    1. Convert ANY current source (TYPE_CURRENT_SOURCE) that may have
+        #       been sampled above into a resistor.
+        #    2. Guarantee that there is precisely ONE voltage source.  If more
+        #       than one was generated, the extras are turned into resistors;
+        #       if none were generated, a random existing edge is promoted to
+        #       a voltage source.
+        # ------------------------------------------------------------------
+
+        # Step-1: eliminate current sources
+        for ii in range(m-1):
+            for jj in range(n):
+                if vcomp_type[ii][jj] == TYPE_CURRENT_SOURCE:
+                    vcomp_type[ii][jj] = TYPE_RESISTOR
+                    vcomp_value[ii][jj] = np.random.randint(comp_mean_value[TYPE_RESISTOR], comp_max_value[TYPE_RESISTOR])
+                    print(f"Converted current source at vedge ({ii},{jj}) to resistor")
+        for ii in range(m):
+            for jj in range(n-1):
+                if hcomp_type[ii][jj] == TYPE_CURRENT_SOURCE:
+                    hcomp_type[ii][jj] = TYPE_RESISTOR
+                    hcomp_value[ii][jj] = np.random.randint(comp_mean_value[TYPE_RESISTOR], comp_max_value[TYPE_RESISTOR])
+                    print(f"Converted current source at hedge ({ii},{jj}) to resistor")
+
+        # Step-2: collect voltage-source positions
+        voltage_positions = []  # list of tuples ('v'/'h', i, j)
+        for ii in range(m-1):
+            for jj in range(n):
+                if vcomp_type[ii][jj] == TYPE_VOLTAGE_SOURCE:
+                    voltage_positions.append(('v', ii, jj))
+        for ii in range(m):
+            for jj in range(n-1):
+                if hcomp_type[ii][jj] == TYPE_VOLTAGE_SOURCE:
+                    voltage_positions.append(('h', ii, jj))
+
+        if len(voltage_positions) == 0:
+            # Promote a random existing edge to a voltage source
+            candidate_edges = [('v', ii, jj) for ii in range(m-1) for jj in range(n) if has_vedge[ii][jj] and vcomp_type[ii][jj] != TYPE_OPEN] + \
+                              [('h', ii, jj) for ii in range(m) for jj in range(n-1) if has_hedge[ii][jj] and hcomp_type[ii][jj] != TYPE_OPEN]
+            if candidate_edges:
+                chosen_edge = random.choice(candidate_edges)
+                if chosen_edge[0] == 'v':
+                    ii, jj = chosen_edge[1], chosen_edge[2]
+                    vcomp_type[ii][jj] = TYPE_VOLTAGE_SOURCE
+                    vcomp_value[ii][jj] = np.random.randint(comp_mean_value[TYPE_VOLTAGE_SOURCE], comp_max_value[TYPE_VOLTAGE_SOURCE])
+                    print(f"Promoted edge at vedge ({ii},{jj}) to voltage source")
+                else:
+                    ii, jj = chosen_edge[1], chosen_edge[2]
+                    hcomp_type[ii][jj] = TYPE_VOLTAGE_SOURCE
+                    hcomp_value[ii][jj] = np.random.randint(comp_mean_value[TYPE_VOLTAGE_SOURCE], comp_max_value[TYPE_VOLTAGE_SOURCE])
+                    print(f"Promoted edge at hedge ({ii},{jj}) to voltage source")
+        elif len(voltage_positions) > 1:
+            # Keep the first voltage source and demote the rest to resistors
+            keep = voltage_positions[0]
+            for pos in voltage_positions[1:]:
+                if pos[0] == 'v':
+                    vcomp_type[pos[1]][pos[2]] = TYPE_RESISTOR
+                    vcomp_value[pos[1]][pos[2]] = np.random.randint(comp_mean_value[TYPE_RESISTOR], comp_max_value[TYPE_RESISTOR])
+                    print(f"Demoted extra voltage source at vedge ({pos[1]},{pos[2]}) to resistor")
+                else:
+                    hcomp_type[pos[1]][pos[2]] = TYPE_RESISTOR
+                    hcomp_value[pos[1]][pos[2]] = np.random.randint(comp_mean_value[TYPE_RESISTOR], comp_max_value[TYPE_RESISTOR])
+                    print(f"Demoted extra voltage source at hedge ({pos[1]},{pos[2]}) to resistor")
+
+        print(f"Voltage source constraint enforced: {len(voltage_positions)} initial voltage sources found")
 
         # print(f"Generating a circuit grid of size {m}x{n} with {num_volsrs} voltage sources, {num_cursrs} current sources, and {num_r} resistors.")
         circ = Circuit(m, n, vertical_dis, horizontal_dis, has_vedge, has_hedge, vcomp_type, hcomp_type, vcomp_label, hcomp_label, \
