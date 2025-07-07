@@ -19,7 +19,15 @@ random.seed(42)
     TYPE_VCVS, # Voltage-Controlled Voltage Source --> E in SPICE
     TYPE_CCCS, # Current-Controlled Current Source --> F in SPICE
     TYPE_CCVS, # Current-Controlled Voltage Source --> H in SPICE
-) = tuple( range(11) )
+    
+    # Ideal Amplifier Types
+    TYPE_OPAMP_INVERTING,    # Inverting Amplifier
+    TYPE_OPAMP_NONINVERTING, # Non-Inverting Amplifier  
+    TYPE_OPAMP_BUFFER,       # Voltage Follower/Buffer
+    TYPE_OPAMP_INTEGRATOR,   # Integrator
+    TYPE_OPAMP_DIFFERENTIATOR, # Differentiator
+    TYPE_OPAMP_SUMMING,      # Summing Amplifier
+) = tuple( range(17) )
 NUM_NORMAL=6
 
 # NOTE: Type of Measurements
@@ -97,7 +105,10 @@ unit_scales = ["", "k", "m", "\\mu", "n", "p"]
 
 LABEL_TYPE_NUMBER, LABEL_TYPE_STRING = tuple(range(2)) # label is numerical format or string format
 components_latex_info = [("short", "", ""), ("V","U","V"), ("I","I","A"), ("R","R",r"\Omega"), ("C","C","F"), ("L","L","H"),
-                         ("open", "", ""), ("cisource", "", ""), ("cvsource", "", ""), ("cisource", "", ""), ("cvsource", "", "") ] # type, label, unit
+                         ("open", "", ""), ("cisource", "", ""), ("cvsource", "", ""), ("cisource", "", ""), ("cvsource", "", ""),
+                         # Op-amp configurations
+                         ("op amp", "A", ""), ("op amp", "A", ""), ("op amp", "A", ""), 
+                         ("op amp", "A", ""), ("op amp", "A", ""), ("op amp", "A", "")] # type, label, unit
 
 CUR_MODE_1, CUR_MODE_2, CUR_MODE_3, CUR_MODE_4, CUR_MODE_5, CUR_MODE_6 = tuple(range(6))
 flow_direction = ["^>", ">_", "^>", "_>"]
@@ -431,6 +442,85 @@ def get_latex_line_draw(x1, y1, x2, y2,
                 
             return ret
 
+# NOTE: plot op-amps (ideal amplifiers)
+        elif type_number in [TYPE_OPAMP_INVERTING, TYPE_OPAMP_NONINVERTING, TYPE_OPAMP_BUFFER, 
+                           TYPE_OPAMP_INTEGRATOR, TYPE_OPAMP_DIFFERENTIATOR, TYPE_OPAMP_SUMMING]:
+            
+            # Determine op-amp configuration and corresponding gain expression
+            if type_number == TYPE_OPAMP_INVERTING:
+                gain_expr = f"-{int(value)}" if use_value_annotation else f"-A_{{ {int(label_subscript)} }}"
+                config_name = "inv"
+            elif type_number == TYPE_OPAMP_NONINVERTING:
+                gain_expr = f"{int(value)+1}" if use_value_annotation else f"A_{{ {int(label_subscript)} }}"
+                config_name = "non-inv"
+            elif type_number == TYPE_OPAMP_BUFFER:
+                gain_expr = "1"
+                config_name = "buffer"
+            elif type_number == TYPE_OPAMP_INTEGRATOR:
+                gain_expr = f"-\\frac{{1}}{{{int(value)}s}}" if use_value_annotation else f"-\\frac{{1}}{{R_{{ {int(label_subscript)} }}Cs}}"
+                config_name = "integrator"
+            elif type_number == TYPE_OPAMP_DIFFERENTIATOR:
+                gain_expr = f"-{int(value)}s" if use_value_annotation else f"-R_{{ {int(label_subscript)} }}Cs"
+                config_name = "differentiator"
+            elif type_number == TYPE_OPAMP_SUMMING:
+                gain_expr = f"-{int(value)}" if use_value_annotation else f"-A_{{ {int(label_subscript)} }}"
+                config_name = "summing"
+            
+            # Calculate op-amp placement (needs more space than regular components)
+            mid_x, mid_y = (x1 + x2) / 2, (y1 + y2) / 2
+            
+            # Op-amp symbol positioning
+            if is_horizontal:
+                # Horizontal op-amp
+                amp_width = 1.5
+                amp_height = 1.0
+                ret = f"\\draw ({mid_x-amp_width/2:.1f},{mid_y-amp_height/2:.1f}) rectangle ({mid_x+amp_width/2:.1f},{mid_y+amp_height/2:.1f});\n"
+                ret += f"\\draw ({x1:.1f},{y1:.1f}) -- ({mid_x-amp_width/2:.1f},{mid_y:.1f});\n"  # Input connection
+                ret += f"\\draw ({mid_x+amp_width/2:.1f},{mid_y:.1f}) -- ({x2:.1f},{y2:.1f});\n"  # Output connection
+                
+                # Add gain label inside op-amp
+                ret += f"\\node at ({mid_x:.1f},{mid_y:.1f}) {{${gain_expr}$}};\n"
+                
+                # Add + and - symbols for inverting/non-inverting
+                if type_number == TYPE_OPAMP_INVERTING:
+                    ret += f"\\node at ({mid_x-amp_width/3:.1f},{mid_y+0.2:.1f}) {{$-$}};\n"
+                    ret += f"\\node at ({mid_x-amp_width/3:.1f},{mid_y-0.2:.1f}) {{$+$}};\n"
+                elif type_number == TYPE_OPAMP_NONINVERTING:
+                    ret += f"\\node at ({mid_x-amp_width/3:.1f},{mid_y+0.2:.1f}) {{$+$}};\n"
+                    ret += f"\\node at ({mid_x-amp_width/3:.1f},{mid_y-0.2:.1f}) {{$-$}};\n"
+            
+            else:
+                # Vertical op-amp
+                amp_width = 1.0
+                amp_height = 1.5
+                ret = f"\\draw ({mid_x-amp_width/2:.1f},{mid_y-amp_height/2:.1f}) rectangle ({mid_x+amp_width/2:.1f},{mid_y+amp_height/2:.1f});\n"
+                ret += f"\\draw ({x1:.1f},{y1:.1f}) -- ({mid_x:.1f},{mid_y-amp_height/2:.1f});\n"  # Input connection
+                ret += f"\\draw ({mid_x:.1f},{mid_y+amp_height/2:.1f}) -- ({x2:.1f},{y2:.1f});\n"  # Output connection
+                
+                # Add gain label inside op-amp
+                ret += f"\\node at ({mid_x:.1f},{mid_y:.1f}) {{${gain_expr}$}};\n"
+                
+                # Add + and - symbols for inverting/non-inverting
+                if type_number == TYPE_OPAMP_INVERTING:
+                    ret += f"\\node at ({mid_x-0.2:.1f},{mid_y-amp_height/3:.1f}) {{$-$}};\n"
+                    ret += f"\\node at ({mid_x+0.2:.1f},{mid_y-amp_height/3:.1f}) {{$+$}};\n"
+                elif type_number == TYPE_OPAMP_NONINVERTING:
+                    ret += f"\\node at ({mid_x-0.2:.1f},{mid_y-amp_height/3:.1f}) {{$+$}};\n"
+                    ret += f"\\node at ({mid_x+0.2:.1f},{mid_y-amp_height/3:.1f}) {{$-$}};\n"
+            
+            # Add measurements if specified
+            v_plot_extra = ""
+            if not meas_comp_same_direction:
+                x1, y1, x2, y2 = x2, y2, x1, y1
+                v_plot_extra = "^"
+            if measure_type == MEAS_TYPE_VOLTAGE:
+                ret += f"\\draw ({x1:.1f},{y1:.1f}) to[open, v{v_plot_extra}=${measure_label}$] ({x2:.1f},{y2:.1f});\n"
+            elif measure_type == MEAS_TYPE_CURRENT:
+                flow_dir = flow_direction[np.random.choice(range(4))]
+                ret += f"\\draw ({x1:.1f},{y1:.1f}) to[short, f{flow_dir}=${measure_label}$] ({x2:.1f},{y2:.1f});\n"
+                
+            return ret
+
     elif style == "american":
         pass
 
@@ -467,7 +557,54 @@ SPICE_PREFFIX = {
     TYPE_CCVS: "H",
     TYPE_OPEN: "",
     TYPE_SHORT: "",
+    # Op-amp configurations use subcircuit models
+    TYPE_OPAMP_INVERTING: "X",
+    TYPE_OPAMP_NONINVERTING: "X", 
+    TYPE_OPAMP_BUFFER: "X",
+    TYPE_OPAMP_INTEGRATOR: "X",
+    TYPE_OPAMP_DIFFERENTIATOR: "X",
+    TYPE_OPAMP_SUMMING: "X",
 }
+
+def reassign_unique_labels(vcomp_type, hcomp_type, vcomp_label, hcomp_label, m, n):
+    """
+    Reassign unique labels to all components after type conversions to prevent duplicates.
+    This ensures that all components of the same type have unique labels.
+    """
+    # Count components by type and reassign labels
+    component_counters = {
+        TYPE_RESISTOR: 0,
+        TYPE_CAPACITOR: 0,
+        TYPE_INDUCTOR: 0,
+        TYPE_VOLTAGE_SOURCE: 0,
+        TYPE_CURRENT_SOURCE: 0,
+        TYPE_VCCS: 0,
+        TYPE_VCVS: 0,
+        TYPE_CCCS: 0,
+        TYPE_CCVS: 0,
+        TYPE_OPAMP_INVERTING: 0,
+        TYPE_OPAMP_NONINVERTING: 0,
+        TYPE_OPAMP_BUFFER: 0,
+        TYPE_OPAMP_INTEGRATOR: 0,
+        TYPE_OPAMP_DIFFERENTIATOR: 0,
+        TYPE_OPAMP_SUMMING: 0,
+    }
+    
+    # Reassign labels for vertical components
+    for ii in range(m-1):
+        for jj in range(n):
+            comp_type = vcomp_type[ii][jj]
+            if comp_type in component_counters:
+                component_counters[comp_type] += 1
+                vcomp_label[ii][jj] = component_counters[comp_type]
+    
+    # Reassign labels for horizontal components
+    for ii in range(m):
+        for jj in range(n-1):
+            comp_type = hcomp_type[ii][jj]
+            if comp_type in component_counters:
+                component_counters[comp_type] += 1
+                hcomp_label[ii][jj] = component_counters[comp_type]
 
 class Circuit:
 
@@ -749,6 +886,17 @@ class Circuit:
         .end
         """
         spice_str = ""
+        
+        # 🔷 DETECT CIRCUIT TYPE EARLY (for separate question types)
+        zero_order = True
+        for br in self.branches:
+            if br["type"] in [TYPE_CAPACITOR, TYPE_INDUCTOR]:
+                zero_order = False
+                break
+        
+        # Store analysis type for later use in questions
+        self.analysis_type = "dc_analysis" if zero_order else "ac_analysis"
+        print(f"Circuit analysis type: {self.analysis_type}")
 
         # NOTE: Element Card
         if int(self.note[1:]) <= 9:
@@ -770,6 +918,9 @@ class Circuit:
                 TYPE_CCVS: 0
             }
             
+            # Track already-used device names to guarantee global uniqueness
+            used_device_names: set[str] = set()
+            
             for br in sorted_branches:
                 meas_comp_same_direction = br["meas_comp_same_direction"]
                 ms_label_str = "" if br["measure_label"] == -1 else str(int(br["measure_label"]))
@@ -787,6 +938,15 @@ class Circuit:
                 label_num = int(br["label"]) if br["label"] != -1 else 1
                 device_name = f"{type_str}{label_num}"
 
+                # If the chosen device name is already present, append
+                # incrementing suffixes until we find a free one. This keeps
+                # the original label visible while ensuring uniqueness.
+                while device_name in used_device_names:
+                    comp_counters[br['type']] += 1
+                    device_name = f"{type_str}{label_num}_{comp_counters[br['type']]}"
+
+                used_device_names.add(device_name)
+
                 print(br["type"], br["label"], br["n1"], br["n2"], br["value"], br["value_unit"])
                 print(f"Device name: {device_name}")
 
@@ -801,11 +961,36 @@ class Circuit:
                         mid_node = "N%s%s" % (br['n1'], br['n2'])
                         vmeas_counter += 1
                         vmeas_str = f"VI{vmeas_counter}"
-                        spice_str += "%s %s %s %s\n" %  (device_name,  br["n1"],   mid_node,   value_write)
+                        
+                        # 🔷 DIFFERENT VOLTAGE SOURCE TYPES FOR DIFFERENT ANALYSES
+                        if br["type"] == TYPE_VOLTAGE_SOURCE:
+                            if self.analysis_type == "ac_analysis":
+                                # AC voltage source: Vname node1 node2 DC_value AC_amplitude freq
+                                dc_value = int(br["value"]) if self.use_value_annotation else 10
+                                ac_amplitude = dc_value  # Same amplitude for simplicity
+                                frequency = "1k"  # 1kHz default frequency
+                                spice_str += "%s %s %s DC %d AC %d\n" % (device_name, br["n1"], mid_node, dc_value, ac_amplitude)
+                            else:
+                                # DC voltage source (original)
+                                spice_str += "%s %s %s %s\n" % (device_name, br["n1"], mid_node, value_write)
+                        else:
+                            spice_str += "%s %s %s %s\n" %  (device_name,  br["n1"],   mid_node,   value_write)
+                        
                         spice_str += "%s %s %s 0\n" %       (vmeas_str,             mid_node,   br["n2"]) if meas_comp_same_direction \
                                 else "%s %s %s 0\n" % (vmeas_str, br["n2"], mid_node)
                     else:
-                        spice_str += "%s %s %s %s\n" %   (device_name,  br["n1"],   br["n2"],   value_write)
+                        # 🔷 DIFFERENT VOLTAGE SOURCE TYPES FOR DIFFERENT ANALYSES
+                        if br["type"] == TYPE_VOLTAGE_SOURCE:
+                            if self.analysis_type == "ac_analysis":
+                                # AC voltage source: Vname node1 node2 DC_value AC_amplitude
+                                dc_value = int(br["value"]) if self.use_value_annotation else 10
+                                ac_amplitude = dc_value  # Same amplitude for simplicity
+                                spice_str += "%s %s %s DC %d AC %d\n" % (device_name, br["n1"], br["n2"], dc_value, ac_amplitude)
+                            else:
+                                # DC voltage source (original)
+                                spice_str += "%s %s %s %s\n" % (device_name, br["n1"], br["n2"], value_write)
+                        else:
+                            spice_str += "%s %s %s %s\n" %   (device_name,  br["n1"],   br["n2"],   value_write)
 
                 if br["type"] in [TYPE_CCVS, TYPE_CCCS]:    # 流控电压源、流控电流源
 
@@ -849,17 +1034,65 @@ class Circuit:
                     else:
                         spice_str += "%s %s %s %s %s %s\n" %  (device_name,  br["n1"],   br["n2"],   control_n1,  control_n2,  value_write)
 
+                # 🔷 OP-AMP CONFIGURATIONS - Use subcircuit models
+                if br["type"] in [TYPE_OPAMP_INVERTING, TYPE_OPAMP_NONINVERTING, TYPE_OPAMP_BUFFER, 
+                                TYPE_OPAMP_INTEGRATOR, TYPE_OPAMP_DIFFERENTIATOR, TYPE_OPAMP_SUMMING]:
+                    
+                    # Generate subcircuit call for op-amp configuration
+                    if br["type"] == TYPE_OPAMP_INVERTING:
+                        # Inverting amplifier: X<name> inp inn out vcc vee opamp_model
+                        # For simplicity, use ground as reference and create internal nodes
+                        gain = int(br["value"]) if self.use_value_annotation else 10
+                        spice_str += f"* Inverting amplifier with gain -{gain}\n"
+                        spice_str += f"E{device_name[1:]} {br['n2']} 0 0 {br['n1']} -{gain}\n"
+                        
+                    elif br["type"] == TYPE_OPAMP_NONINVERTING:
+                        # Non-inverting amplifier: gain = 1 + Rf/Rin
+                        gain = int(br["value"]) + 1 if self.use_value_annotation else 11
+                        spice_str += f"* Non-inverting amplifier with gain {gain}\n"
+                        spice_str += f"E{device_name[1:]} {br['n2']} 0 {br['n1']} 0 {gain}\n"
+                        
+                    elif br["type"] == TYPE_OPAMP_BUFFER:
+                        # Unity gain buffer
+                        spice_str += f"* Unity gain buffer\n"
+                        spice_str += f"E{device_name[1:]} {br['n2']} 0 {br['n1']} 0 1\n"
+                        
+                    elif br["type"] == TYPE_OPAMP_INTEGRATOR:
+                        # Integrator: Vout = -1/(RC) * integral(Vin)
+                        # Use Laplace transform: H(s) = -1/(RCs)
+                        rc_value = int(br["value"]) if self.use_value_annotation else 1
+                        spice_str += f"* Integrator with RC = {rc_value}\n"
+                        spice_str += f"E{device_name[1:]} {br['n2']} 0 LAPLACE {{V({br['n1']})}} {{-1/({rc_value}*s)}}\n"
+                        
+                    elif br["type"] == TYPE_OPAMP_DIFFERENTIATOR:
+                        # Differentiator: Vout = -RC * d(Vin)/dt
+                        # Use Laplace transform: H(s) = -RCs
+                        rc_value = int(br["value"]) if self.use_value_annotation else 1
+                        spice_str += f"* Differentiator with RC = {rc_value}\n"
+                        spice_str += f"E{device_name[1:]} {br['n2']} 0 LAPLACE {{V({br['n1']})}} {{-{rc_value}*s}}\n"
+                        
+                    elif br["type"] == TYPE_OPAMP_SUMMING:
+                        # Summing amplifier: Vout = -(Rf/Rin) * Vin
+                        gain = int(br["value"]) if self.use_value_annotation else 10
+                        spice_str += f"* Summing amplifier with gain -{gain}\n"
+                        spice_str += f"E{device_name[1:]} {br['n2']} 0 0 {br['n1']} -{gain}\n"
+                    
+                    # Add current measurement if needed
+                    if br["measure"] == MEAS_TYPE_CURRENT:
+                        mid_node = f"N{br['n1']}{br['n2']}"
+                        vmeas_counter += 1
+                        vmeas_str = f"VI{vmeas_counter}"
+                        # Insert voltage source for current measurement
+                        spice_str += f"{vmeas_str} {mid_node} {br['n2']} 0\n"
+                        # Modify the op-amp output to go through the measurement
+                        spice_str = spice_str.replace(f" {br['n2']} 0 ", f" {mid_node} 0 ")
+
         # NOTE: Control Card
         if int(self.note[1:]) <= 9:
             raise NotImplementedError
         elif int(self.note[1:]) > 9:
-            zero_order = True
-            for br in self.branches:
-                if br["type"] in [TYPE_CAPACITOR, TYPE_INDUCTOR]:
-                    zero_order = False
-                    break
-
-            if zero_order:      # 零阶电路
+            # 🔷 USE EARLY DETECTION RESULTS (already calculated above)
+            if self.analysis_type == "dc_analysis":      # 🔷 RESISTIVE CIRCUITS
                 sim_str = ".control\nop\n"
                 current_meas_counter = 0  # Counter for current measurements in simulation
                 
@@ -892,58 +1125,19 @@ class Circuit:
                 # exit()
                 spice_str = SPICE_TEMPLATES[self.note].format(components=spice_str, simulation=sim_str)   
 
-            else:   # higher order circuits with capacitors/inductors
-                # Calculate appropriate time scale based on component values
-                time_constants = []
-                max_resistance = 0
-                max_capacitance = 0
-                max_inductance = 0
+            else:   # 🔷 RLC CIRCUITS - AC Analysis
+                # 🔷 AC ANALYSIS for circuits with reactive components (L, C)
+                print("Generating AC analysis for RLC circuit")
                 
-                # Analyze circuit components to determine time scale
-                for br in self.branches:
-                    if br["type"] == TYPE_RESISTOR:
-                        max_resistance = max(max_resistance, br["value"])
-                    elif br["type"] == TYPE_CAPACITOR:
-                        max_capacitance = max(max_capacitance, br["value"] * 1e-6)  # Convert to µF
-                    elif br["type"] == TYPE_INDUCTOR:
-                        max_inductance = max(max_inductance, br["value"] * 1e-3)   # Convert to mH
+                # Use AC analysis with appropriate frequency range
+                start_freq = "1"      # Start at 1 Hz
+                stop_freq = "100k"    # Stop at 100 kHz  
+                points_per_decade = "10"  # 10 points per decade
                 
-                # Use reasonable defaults if components are missing
-                if max_resistance == 0:
-                    max_resistance = 1000  # Default 1kΩ
-                if max_capacitance == 0:
-                    max_capacitance = 1e-6  # Default 1µF
-                if max_inductance == 0:
-                    max_inductance = 1e-3   # Default 1mH
-                
-                # Calculate time constants: τ_RC = RC, τ_RL = L/R
-                if max_capacitance > 0:
-                    time_constants.append(max_resistance * max_capacitance)
-                if max_inductance > 0:
-                    time_constants.append(max_inductance / max_resistance)
-                
-                # Determine simulation time parameters
-                if time_constants:
-                    max_tc = max(time_constants)
-                    # Step time: 1/100th of smallest time constant for accuracy
-                    step_time = min(time_constants) / 100 if time_constants else 1e-6
-                    # Stop time: 5x largest time constant to reach steady state
-                    stop_time = max_tc * 5
-                    
-                    # Ensure reasonable bounds
-                    step_time = max(step_time, 1e-9)   # Min 1ns
-                    step_time = min(step_time, 1e-4)   # Max 100µs
-                    stop_time = max(stop_time, 1e-6)   # Min 1µs 
-                    stop_time = min(stop_time, 1.0)    # Max 1s
-                else:
-                    step_time = 1e-6   # Default 1µs
-                    stop_time = 1e-3   # Default 1ms
-                
-                # Generate transient simulation commands
-                sim_str = f".control\ntran {step_time:.2e} {stop_time:.2e}\n"
+                sim_str = f".control\nac dec {points_per_decade} {start_freq} {stop_freq}\n"
                 current_meas_counter = 0  # Counter for current measurements in simulation
                 
-                # Generate measurement commands (same logic as DC but for transient)
+                # 🔷 GENERATE AC MEASUREMENT COMMANDS (different questions for RLC circuits)
                 for br in self.branches:
                     if br["measure_label"] == -1:
                         ms_label_str = ""
@@ -951,25 +1145,27 @@ class Circuit:
                         ms_label_str = str(int(br["measure_label"]))
 
                     if br["measure"] == MEAS_TYPE_VOLTAGE:
-                        print(f"#n1: {br['n1']}, n2: {br['n2']}")
+                        print(f"#AC voltage measurement: n1: {br['n1']}, n2: {br['n2']}")
                         meas_n1, meas_n2 = br["n1"], br["n2"]
                         if not br["meas_comp_same_direction"]:
                             meas_n1, meas_n2 = meas_n2, meas_n1
                         if str(meas_n1) == '0':
-                            sim_str += "print -v(%s) ; measurement of U%s\n" % (meas_n2, ms_label_str)
+                            # AC analysis: measure magnitude and phase
+                            sim_str += "print vm(%s) vp(%s) ; AC magnitude and phase of U%s\n" % (meas_n2, meas_n2, ms_label_str)
                         elif str(meas_n2) == '0':
-                            sim_str += "print v(%s) ; measurement of U%s\n" % (meas_n1, ms_label_str)
+                            sim_str += "print vm(%s) vp(%s) ; AC magnitude and phase of U%s\n" % (meas_n1, meas_n1, ms_label_str)
                         else:
-                            sim_str += "print v(%s, %s) ; measurement of U%s\n" % (meas_n1, meas_n2, ms_label_str)
+                            # For differential voltage, use the positive node
+                            sim_str += "print vm(%s,%s) vp(%s,%s) ; AC magnitude and phase of U%s\n" % (meas_n1, meas_n2, meas_n1, meas_n2, ms_label_str)
                     elif br["measure"] == MEAS_TYPE_CURRENT:
-                        print('#')
+                        print('#AC current measurement')
                         current_meas_counter += 1
                         vmeas_str = f"VI{current_meas_counter}"
-                        sim_str += "print i(%s) ; measurement of I%s\n" % (vmeas_str, ms_label_str)
+                        # AC analysis: measure current magnitude and phase
+                        sim_str += "print im(%s) ip(%s) ; AC magnitude and phase of I%s\n" % (vmeas_str, vmeas_str, ms_label_str)
                 
                 sim_str += ".endc\n"
-                print(f"Transient simulation: step={step_time:.2e}s, stop={stop_time:.2e}s")
-                print(f"Time constants: RC={max_resistance * max_capacitance:.2e}s, RL={max_inductance / max_resistance:.2e}s")
+                print(f"AC analysis: freq range {start_freq}Hz to {stop_freq}Hz, {points_per_decade} points/decade")
                 print(f"spice_str: {spice_str}, \n\nsim_str: {sim_str}\n\n")
                 spice_str = SPICE_TEMPLATES[self.note].format(components=spice_str, simulation=sim_str)        
         else:
@@ -1670,6 +1866,10 @@ def gen_circuit(note="v1", id="", symbolic=False):
 
         print(f"Voltage source constraint enforced: {len(voltage_positions)} initial voltage sources found")
 
+        # Reassign unique labels after all type conversions to prevent duplicates
+        reassign_unique_labels(vcomp_type, hcomp_type, vcomp_label, hcomp_label, m, n)
+        print("Component labels reassigned to ensure uniqueness")
+
         # print(f"Generating a circuit grid of size {m}x{n} with {num_volsrs} voltage sources, {num_cursrs} current sources, and {num_r} resistors.")
         circ = Circuit( m=m, n=n, \
                         vertical_dis=vertical_dis, horizontal_dis=horizontal_dis, \
@@ -1690,25 +1890,25 @@ def gen_circuit(note="v1", id="", symbolic=False):
 
         # Set distribution & Hyperparameters
         num_grid_options = [2, 3, 4, 5, 6, 7, 8]
-        num_grid_dis = [3, 6, 6, 2, 1, 0, 0]
+        num_grid_dis =     [4, 6, 2, 1, 0, 0, 0]
         num_grid_choices = []
         for op, dis in zip(num_grid_options, num_grid_dis):
             num_grid_choices += [op]*dis
  
-        num_comp_dis = [8, 4, 4, 20, 3, 3, 8, 0, 0, 0, 0]  # Short, V, I, R, C, L, Open, VCCS, VCVS, CCCS, CCVS - Enabled C and L
-        num_comp_dis_outer = [8, 4, 4, 16, 2, 2, 0, 1, 1, 1, 1]    # in the outer loop: no <open> - Enabled C and L with reduced complexity
+        num_comp_dis = [10, 4, 0, 20, 3, 3, 8, 0, 0, 0, 0, 2, 2, 1, 2, 1, 1]  # Short, V, I, R, C, L, Open, VCCS, VCVS, CCCS, CCVS, OpAmp_Inv, OpAmp_NonInv, OpAmp_Buffer, OpAmp_Integrator, OpAmp_Diff, OpAmp_Sum
+        num_comp_dis_outer = [8, 4, 0, 16, 2, 2, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]    # Include op-amps in outer edges with reduced frequency
         num_comp_choices = []
         num_comp_choices_outer = []
-        for op, dis in zip(range(11), num_comp_dis):
+        for op, dis in zip(range(17), num_comp_dis):
             num_comp_choices += [op]*dis
-        for op, dis in zip(range(11), num_comp_dis_outer):
+        for op, dis in zip(range(17), num_comp_dis_outer):
             num_comp_choices_outer += [op]*dis
-        
+
         vertical_dis_mean, vertical_dis_std = 3.2, 0.3  # Moderate spacing
         horizontal_dis_mean, horizontal_dis_std = 3.2, 0.3  # Moderate spacing
 
-        comp_mean_value = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-        comp_max_value = [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
+        comp_mean_value = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]  # Extended for op-amps
+        comp_max_value = [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 50, 50, 1, 10, 10, 50]  # Op-amp specific ranges
 
         # Simplified unit choices - only use base units (no k, m, etc.)
         unit_choices = [UNIT_MODE_1]  # Only use base units, no scaling
@@ -1759,7 +1959,7 @@ def gen_circuit(note="v1", id="", symbolic=False):
             hcomp_control_meas_label = np.zeros((m, n-1))
 
             # Get the components
-            comp_cnt = [0] * 11
+            comp_cnt = [0] * 17  # Extended for op-amps
             meas_label_stat = {
                 MEAS_TYPE_NONE: [],
                 MEAS_TYPE_VOLTAGE: [],
@@ -1961,6 +2161,10 @@ def gen_circuit(note="v1", id="", symbolic=False):
                     print(f"Demoted extra voltage source at hedge ({pos[1]},{pos[2]}) to resistor")
 
         print(f"Voltage source constraint enforced: {len(voltage_positions)} initial voltage sources found")
+
+        # Reassign unique labels after all type conversions to prevent duplicates
+        reassign_unique_labels(vcomp_type, hcomp_type, vcomp_label, hcomp_label, m, n)
+        print("Component labels reassigned to ensure uniqueness")
 
         # print(f"Generating a circuit grid of size {m}x{n} with {num_volsrs} voltage sources, {num_cursrs} current sources, and {num_r} resistors.")
         circ = Circuit(m, n, vertical_dis, horizontal_dis, has_vedge, has_hedge, vcomp_type, hcomp_type, vcomp_label, hcomp_label, \

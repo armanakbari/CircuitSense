@@ -122,11 +122,24 @@ def derive_equations(paths, args):
     if args.show_sample_equations:
         cmd.append("--show_samples")
     
+    # Add symbolic question generation if requested
+    if hasattr(args, 'generate_symbolic_questions') and args.generate_symbolic_questions:
+        cmd.append("--generate_symbolic_questions")
+        print("🎓 Generating symbolic transfer function questions...")
+    
+    if hasattr(args, 'questions_only') and args.questions_only:
+        cmd.append("--questions_only")
+        print("🎓 Running in questions-only mode...")
+    
     success = run_command(cmd, cwd=str(paths['script_dir']), description="Equation derivation")
     
     if success:
         if equations_output.exists():
             print(f"Symbolic equations saved to: {equations_output}")
+            
+            # Show symbolic questions summary if they were generated
+            if hasattr(args, 'generate_symbolic_questions') and args.generate_symbolic_questions:
+                print("🎓 Symbolic transfer function questions included in output!")
         else:
             print("Warning: Equation file was not created!")
             return False
@@ -145,8 +158,10 @@ Examples:
   %(prog)s --note symbolic_circuits --gen_num 50 --symbolic
   %(prog)s --note analysis_circuits --gen_num 30 --derive_equations --max_equations 15
   %(prog)s --note full_pipeline --gen_num 50 --symbolic --derive_equations --show_sample_equations
+  %(prog)s --note symbolic_questions --gen_num 20 --derive_equations --generate_symbolic_questions
+  %(prog)s --note training_data --gen_num 30 --questions_only --show_sample_equations
   %(prog)s --note production --gen_num 1000 --num_proc 8 --skip_generation
-  %(prog)s --note existing_data --skip_visualization --derive_equations
+  %(prog)s --note existing_data --skip_visualization --derive_equations --generate_symbolic_questions
         """)
     
     parser.add_argument(
@@ -198,6 +213,16 @@ Examples:
         action="store_true",
         help="Display sample equations in the terminal during derivation"
     )
+    analysis_group.add_argument(
+        "--generate_symbolic_questions",
+        action="store_true",
+        help="Generate symbolic transfer function questions for training"
+    )
+    analysis_group.add_argument(
+        "--questions_only",
+        action="store_true",
+        help="Only generate symbolic questions (implies --derive_equations and --generate_symbolic_questions)"
+    )
     
     control_group = parser.add_argument_group("Pipeline Control")
     control_group.add_argument(
@@ -217,6 +242,11 @@ Examples:
     )
     
     args = parser.parse_args()
+    
+    # Handle questions_only flag
+    if args.questions_only:
+        args.derive_equations = True
+        args.generate_symbolic_questions = True
     
     if args.gen_num <= 0:
         parser.error("--gen_num must be a positive integer")
