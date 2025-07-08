@@ -113,6 +113,218 @@ components_latex_info = [("short", "", ""), ("V","U","V"), ("I","I","A"), ("R","
 CUR_MODE_1, CUR_MODE_2, CUR_MODE_3, CUR_MODE_4, CUR_MODE_5, CUR_MODE_6 = tuple(range(6))
 flow_direction = ["^>", ">_", "^>", "_>"]
 
+def draw_integrator_template(center_x, center_y, resistor_value, capacitor_value, 
+                           use_value_annotation=True, label_subscript=1, 
+                           orientation="horizontal_lr"):
+    """
+    Draw a complete integrator op-amp template with proper spacing and directional orientation.
+    
+    Args:
+        center_x, center_y: Center position for the template
+        resistor_value: Value of input resistor  
+        capacitor_value: Value of feedback capacitor
+        use_value_annotation: Whether to show values or symbolic labels
+        label_subscript: Label number for components
+        orientation: "horizontal_lr", "horizontal_rl", "vertical_bt", "vertical_tb"
+                    lr=left-to-right, rl=right-to-left, bt=bottom-to-top, tb=top-to-bottom
+    
+    Returns:
+        tuple: (latex_code, input_point, output_point, ground_point)
+    """
+    
+    # Component labels
+    if use_value_annotation:
+        r_label = f"{int(resistor_value)} \\mathrm{{\\Omega}}"
+        c_label = f"{int(capacitor_value)} \\mathrm{{F}}"
+    else:
+        r_label = f"R_{{{int(label_subscript)}}}"
+        c_label = f"C_{{{int(label_subscript)}}}"
+    
+    # Start building the LaTeX code
+    latex_code = f"% Integrator template ({orientation}) centered at ({center_x:.1f}, {center_y:.1f})\n"
+    
+    # Transfer function label
+    if use_value_annotation:
+        tf_label = f"-\\frac{{1}}{{{int(resistor_value)} \\cdot {int(capacitor_value)} \\cdot s}}"
+    else:
+        tf_label = f"-\\frac{{1}}{{R_{{{int(label_subscript)}}} C_{{{int(label_subscript)}}} s}}"
+    
+    if orientation == "horizontal_lr":
+        # Horizontal left-to-right integrator (spans ~6 units width, 3 units height)
+        opamp_x = center_x
+        opamp_y = center_y
+        
+        # Input resistor connection (left side)
+        input_node_x = opamp_x - 3.0
+        input_node_y = opamp_y + 0.2  # Slightly above center for inverting input
+        
+        # Output connection (right side)  
+        output_node_x = opamp_x + 3.0
+        output_node_y = opamp_y
+        
+        # Feedback path coordinates
+        feedback_top_x = opamp_x + 2.0
+        feedback_top_y = opamp_y + 1.5
+        feedback_left_x = opamp_x - 1.5
+        feedback_left_y = opamp_y + 1.5
+        
+        # 1. Draw the op-amp
+        latex_code += f"\\draw ({opamp_x:.1f},{opamp_y:.1f}) node[op amp] (opamp{int(label_subscript)}) {{}};\n"
+        
+        # 2. Draw input resistor (from input node to inverting terminal)
+        latex_code += f"\\draw ({input_node_x:.1f},{input_node_y:.1f}) to[R, l=${r_label}$] (opamp{int(label_subscript)}.-);\n"
+        
+        # 3. Draw feedback capacitor path
+        latex_code += f"\\draw (opamp{int(label_subscript)}.out) to[short] ({output_node_x:.1f},{output_node_y:.1f});\n"
+        latex_code += f"\\draw ({output_node_x:.1f},{output_node_y:.1f}) to[short] ({feedback_top_x:.1f},{feedback_top_y:.1f});\n"
+        latex_code += f"\\draw ({feedback_top_x:.1f},{feedback_top_y:.1f}) to[C, l=${c_label}$] ({feedback_left_x:.1f},{feedback_left_y:.1f});\n"
+        latex_code += f"\\draw ({feedback_left_x:.1f},{feedback_left_y:.1f}) to[short] (opamp{int(label_subscript)}.-);\n"
+        
+        # 4. Ground the non-inverting input
+        latex_code += f"\\draw (opamp{int(label_subscript)}.+) to[short] ++(0,-0.8) node[ground] {{}};\n"
+        
+        # 5. Add transfer function label
+        latex_code += f"\\node[below=0.5] at (opamp{int(label_subscript)}.south) {{\\small ${tf_label}$}};\n"
+        
+        input_point = (input_node_x, input_node_y)
+        output_point = (output_node_x, output_node_y)
+        
+    elif orientation == "horizontal_rl":
+        # Horizontal right-to-left integrator (spans ~6 units width, 3 units height)
+        opamp_x = center_x
+        opamp_y = center_y
+        
+        # Input resistor connection (right side)
+        input_node_x = opamp_x + 3.0
+        input_node_y = opamp_y + 0.2  # Slightly above center for inverting input
+        
+        # Output connection (left side)  
+        output_node_x = opamp_x - 3.0
+        output_node_y = opamp_y
+        
+        # Feedback path coordinates (mirrored)
+        feedback_top_x = opamp_x - 2.0
+        feedback_top_y = opamp_y + 1.5
+        feedback_right_x = opamp_x + 1.5
+        feedback_right_y = opamp_y + 1.5
+        
+        # 1. Draw the op-amp (flipped horizontally)
+        latex_code += f"\\draw ({opamp_x:.1f},{opamp_y:.1f}) node[op amp, xscale=-1] (opamp{int(label_subscript)}) {{}};\n"
+        
+        # 2. Draw input resistor (from input node to inverting terminal)
+        latex_code += f"\\draw ({input_node_x:.1f},{input_node_y:.1f}) to[R, l=${r_label}$] (opamp{int(label_subscript)}.-);\n"
+        
+        # 3. Draw feedback capacitor path
+        latex_code += f"\\draw (opamp{int(label_subscript)}.out) to[short] ({output_node_x:.1f},{output_node_y:.1f});\n"
+        latex_code += f"\\draw ({output_node_x:.1f},{output_node_y:.1f}) to[short] ({feedback_top_x:.1f},{feedback_top_y:.1f});\n"
+        latex_code += f"\\draw ({feedback_top_x:.1f},{feedback_top_y:.1f}) to[C, l=${c_label}$] ({feedback_right_x:.1f},{feedback_right_y:.1f});\n"
+        latex_code += f"\\draw ({feedback_right_x:.1f},{feedback_right_y:.1f}) to[short] (opamp{int(label_subscript)}.-);\n"
+        
+        # 4. Ground the non-inverting input (adjusted for horizontal flip - ground goes up for flipped op-amp)
+        latex_code += f"\\draw (opamp{int(label_subscript)}.+) to[short] ++(0,0.8) node[ground] {{}};\n"
+        
+        # 5. Add transfer function label
+        latex_code += f"\\node[below=0.5] at (opamp{int(label_subscript)}.south) {{\\small ${tf_label}$}};\n"
+        
+        input_point = (input_node_x, input_node_y)
+        output_point = (output_node_x, output_node_y)
+        
+    elif orientation == "vertical_bt":
+        # Vertical bottom-to-top integrator (spans ~3 units width, 6 units height)
+        opamp_x = center_x
+        opamp_y = center_y
+        
+        # Input resistor connection (bottom)
+        input_node_x = opamp_x + 0.2  # Slightly right of center for inverting input
+        input_node_y = opamp_y - 3.0
+        
+        # Output connection (top)
+        output_node_x = opamp_x
+        output_node_y = opamp_y + 3.0
+        
+        # Feedback path coordinates  
+        feedback_right_x = opamp_x + 1.5
+        feedback_right_y = opamp_y + 2.0
+        feedback_bottom_x = opamp_x + 1.5
+        feedback_bottom_y = opamp_y - 1.5
+        
+        # 1. Draw the op-amp (rotated 90 degrees)
+        latex_code += f"\\draw ({opamp_x:.1f},{opamp_y:.1f}) node[op amp, rotate=90] (opamp{int(label_subscript)}) {{}};\n"
+        
+        # 2. Draw input resistor (from input node to inverting terminal)
+        latex_code += f"\\draw ({input_node_x:.1f},{input_node_y:.1f}) to[R, l=${r_label}$] (opamp{int(label_subscript)}.-);\n"
+        
+        # 3. Draw feedback capacitor path
+        latex_code += f"\\draw (opamp{int(label_subscript)}.out) to[short] ({output_node_x:.1f},{output_node_y:.1f});\n"
+        latex_code += f"\\draw ({output_node_x:.1f},{output_node_y:.1f}) to[short] ({feedback_right_x:.1f},{feedback_right_y:.1f});\n"
+        latex_code += f"\\draw ({feedback_right_x:.1f},{feedback_right_y:.1f}) to[C, l=${c_label}$] ({feedback_bottom_x:.1f},{feedback_bottom_y:.1f});\n"
+        latex_code += f"\\draw ({feedback_bottom_x:.1f},{feedback_bottom_y:.1f}) to[short] (opamp{int(label_subscript)}.-);\n"
+        
+        # 4. Ground the non-inverting input  
+        latex_code += f"\\draw (opamp{int(label_subscript)}.+) to[short] ++(-0.8,0) node[ground] {{}};\n"
+        
+        # 5. Add transfer function label
+        latex_code += f"\\node[left=0.5] at (opamp{int(label_subscript)}.west) {{\\small ${tf_label}$}};\n"
+        
+        input_point = (input_node_x, input_node_y)
+        output_point = (output_node_x, output_node_y)
+        
+    else:  # orientation == "vertical_tb"
+        # Vertical top-to-bottom integrator (spans ~3 units width, 6 units height)
+        opamp_x = center_x
+        opamp_y = center_y
+        
+        # Input resistor connection (top)
+        input_node_x = opamp_x + 0.2  # Slightly right of center for inverting input
+        input_node_y = opamp_y + 3.0
+        
+        # Output connection (bottom)
+        output_node_x = opamp_x
+        output_node_y = opamp_y - 3.0
+        
+        # Feedback path coordinates (flipped vertically)
+        feedback_right_x = opamp_x + 1.5
+        feedback_right_y = opamp_y - 2.0
+        feedback_top_x = opamp_x + 1.5
+        feedback_top_y = opamp_y + 1.5
+        
+        # 1. Draw the op-amp (rotated -90 degrees)
+        latex_code += f"\\draw ({opamp_x:.1f},{opamp_y:.1f}) node[op amp, rotate=-90] (opamp{int(label_subscript)}) {{}};\n"
+        
+        # 2. Draw input resistor (from input node to inverting terminal)
+        latex_code += f"\\draw ({input_node_x:.1f},{input_node_y:.1f}) to[R, l=${r_label}$] (opamp{int(label_subscript)}.-);\n"
+        
+        # 3. Draw feedback capacitor path
+        latex_code += f"\\draw (opamp{int(label_subscript)}.out) to[short] ({output_node_x:.1f},{output_node_y:.1f});\n"
+        latex_code += f"\\draw ({output_node_x:.1f},{output_node_y:.1f}) to[short] ({feedback_right_x:.1f},{feedback_right_y:.1f});\n"
+        latex_code += f"\\draw ({feedback_right_x:.1f},{feedback_right_y:.1f}) to[C, l=${c_label}$] ({feedback_top_x:.1f},{feedback_top_y:.1f});\n"
+        latex_code += f"\\draw ({feedback_top_x:.1f},{feedback_top_y:.1f}) to[short] (opamp{int(label_subscript)}.-);\n"
+        
+        # 4. Ground the non-inverting input  
+        latex_code += f"\\draw (opamp{int(label_subscript)}.+) to[short] ++(0.8,0) node[ground] {{}};\n"
+        
+        # 5. Add transfer function label
+        latex_code += f"\\node[right=0.5] at (opamp{int(label_subscript)}.east) {{\\small ${tf_label}$}};\n"
+        
+        input_point = (input_node_x, input_node_y)
+        output_point = (output_node_x, output_node_y)
+    
+    # 6. Mark connection points clearly
+    latex_code += f"\\node[circle, fill=red, inner sep=1.5pt] at ({input_point[0]:.1f},{input_point[1]:.1f}) {{}};\n"  # Input connection point
+    latex_code += f"\\node[circle, fill=red, inner sep=1.5pt] at ({output_point[0]:.1f},{output_point[1]:.1f}) {{}};\n"  # Output connection point
+    
+    # Calculate ground point based on orientation
+    if orientation == "horizontal_lr":
+        ground_point = (opamp_x, opamp_y - 1.0)  # Ground goes down
+    elif orientation == "horizontal_rl":
+        ground_point = (opamp_x, opamp_y + 1.0)  # Ground goes up (for flipped op-amp)
+    elif orientation == "vertical_bt":
+        ground_point = (opamp_x - 1.0, opamp_y)  # Ground goes left
+    else:  # vertical_tb
+        ground_point = (opamp_x + 1.0, opamp_y)  # Ground goes right
+    
+    return latex_code, input_point, output_point, ground_point
+
 def get_latex_line_draw(x1, y1, x2, y2,
                         type_number, 
                         label_subscript,
@@ -442,71 +654,59 @@ def get_latex_line_draw(x1, y1, x2, y2,
                 
             return ret
 
-# NOTE: plot op-amps (ideal amplifiers)
-        elif type_number in [TYPE_OPAMP_INVERTING, TYPE_OPAMP_NONINVERTING, TYPE_OPAMP_BUFFER, 
-                           TYPE_OPAMP_INTEGRATOR, TYPE_OPAMP_DIFFERENTIATOR, TYPE_OPAMP_SUMMING]:
+# NOTE: plot op-amps (ideal amplifiers) - now using templates for better visualization
+        elif type_number == TYPE_OPAMP_INTEGRATOR:
             
-            # Determine op-amp configuration and corresponding gain expression
-            if type_number == TYPE_OPAMP_INVERTING:
-                gain_expr = f"-{int(value)}" if use_value_annotation else f"-A_{{ {int(label_subscript)} }}"
-                config_name = "inv"
-            elif type_number == TYPE_OPAMP_NONINVERTING:
-                gain_expr = f"{int(value)+1}" if use_value_annotation else f"A_{{ {int(label_subscript)} }}"
-                config_name = "non-inv"
-            elif type_number == TYPE_OPAMP_BUFFER:
-                gain_expr = "1"
-                config_name = "buffer"
-            elif type_number == TYPE_OPAMP_INTEGRATOR:
-                gain_expr = f"-\\frac{{1}}{{{int(value)}s}}" if use_value_annotation else f"-\\frac{{1}}{{R_{{ {int(label_subscript)} }}Cs}}"
-                config_name = "integrator"
-            elif type_number == TYPE_OPAMP_DIFFERENTIATOR:
-                gain_expr = f"-{int(value)}s" if use_value_annotation else f"-R_{{ {int(label_subscript)} }}Cs"
-                config_name = "differentiator"
-            elif type_number == TYPE_OPAMP_SUMMING:
-                gain_expr = f"-{int(value)}" if use_value_annotation else f"-A_{{ {int(label_subscript)} }}"
-                config_name = "summing"
+            # Detect orientation and direction based on edge coordinates
+            is_horizontal = abs(y2 - y1) < 0.1  # Horizontal edge (y values nearly equal)
+            is_vertical = abs(x2 - x1) < 0.1     # Vertical edge (x values nearly equal)
             
-            # Calculate op-amp placement (needs more space than regular components)
-            mid_x, mid_y = (x1 + x2) / 2, (y1 + y2) / 2
+            # Center the template on the edge
+            center_x = (x1 + x2) / 2
+            center_y = (y1 + y2) / 2
             
-            # Op-amp symbol positioning
             if is_horizontal:
-                # Horizontal op-amp
-                amp_width = 1.5
-                amp_height = 1.0
-                ret = f"\\draw ({mid_x-amp_width/2:.1f},{mid_y-amp_height/2:.1f}) rectangle ({mid_x+amp_width/2:.1f},{mid_y+amp_height/2:.1f});\n"
-                ret += f"\\draw ({x1:.1f},{y1:.1f}) -- ({mid_x-amp_width/2:.1f},{mid_y:.1f});\n"  # Input connection
-                ret += f"\\draw ({mid_x+amp_width/2:.1f},{mid_y:.1f}) -- ({x2:.1f},{y2:.1f});\n"  # Output connection
-                
-                # Add gain label inside op-amp
-                ret += f"\\node at ({mid_x:.1f},{mid_y:.1f}) {{${gain_expr}$}};\n"
-                
-                # Add + and - symbols for inverting/non-inverting
-                if type_number == TYPE_OPAMP_INVERTING:
-                    ret += f"\\node at ({mid_x-amp_width/3:.1f},{mid_y+0.2:.1f}) {{$-$}};\n"
-                    ret += f"\\node at ({mid_x-amp_width/3:.1f},{mid_y-0.2:.1f}) {{$+$}};\n"
-                elif type_number == TYPE_OPAMP_NONINVERTING:
-                    ret += f"\\node at ({mid_x-amp_width/3:.1f},{mid_y+0.2:.1f}) {{$+$}};\n"
-                    ret += f"\\node at ({mid_x-amp_width/3:.1f},{mid_y-0.2:.1f}) {{$-$}};\n"
-            
+                # Determine horizontal direction: left-to-right or right-to-left
+                if x2 > x1:  # Signal flows from left (x1) to right (x2)
+                    orientation = "horizontal_lr"
+                else:  # Signal flows from right (x1) to left (x2)
+                    orientation = "horizontal_rl"
+                    
+            elif is_vertical:
+                # Determine vertical direction: bottom-to-top or top-to-bottom
+                if y2 > y1:  # Signal flows from bottom (y1) to top (y2)
+                    orientation = "vertical_bt"
+                else:  # Signal flows from top (y1) to bottom (y2)
+                    orientation = "vertical_tb"
+                    
             else:
-                # Vertical op-amp
-                amp_width = 1.0
-                amp_height = 1.5
-                ret = f"\\draw ({mid_x-amp_width/2:.1f},{mid_y-amp_height/2:.1f}) rectangle ({mid_x+amp_width/2:.1f},{mid_y+amp_height/2:.1f});\n"
-                ret += f"\\draw ({x1:.1f},{y1:.1f}) -- ({mid_x:.1f},{mid_y-amp_height/2:.1f});\n"  # Input connection
-                ret += f"\\draw ({mid_x:.1f},{mid_y+amp_height/2:.1f}) -- ({x2:.1f},{y2:.1f});\n"  # Output connection
+                # For diagonal edges, determine based on dominant direction
+                dx = abs(x2 - x1)
+                dy = abs(y2 - y1)
                 
-                # Add gain label inside op-amp
-                ret += f"\\node at ({mid_x:.1f},{mid_y:.1f}) {{${gain_expr}$}};\n"
-                
-                # Add + and - symbols for inverting/non-inverting
-                if type_number == TYPE_OPAMP_INVERTING:
-                    ret += f"\\node at ({mid_x-0.2:.1f},{mid_y-amp_height/3:.1f}) {{$-$}};\n"
-                    ret += f"\\node at ({mid_x+0.2:.1f},{mid_y-amp_height/3:.1f}) {{$+$}};\n"
-                elif type_number == TYPE_OPAMP_NONINVERTING:
-                    ret += f"\\node at ({mid_x-0.2:.1f},{mid_y-amp_height/3:.1f}) {{$+$}};\n"
-                    ret += f"\\node at ({mid_x+0.2:.1f},{mid_y-amp_height/3:.1f}) {{$-$}};\n"
+                if dx > dy:  # More horizontal than vertical
+                    orientation = "horizontal_lr" if x2 > x1 else "horizontal_rl"
+                else:  # More vertical than horizontal
+                    orientation = "vertical_bt" if y2 > y1 else "vertical_tb"
+            
+            # For integrator, we need both resistor and capacitor values
+            # Use the component value as time constant (RC), split into R and C
+            time_constant = int(value) if use_value_annotation else 1
+            resistor_value = max(1, time_constant // 10) if time_constant > 10 else 1
+            capacitor_value = max(1, time_constant - resistor_value) if time_constant > resistor_value else 1
+            
+            # Generate the integrator template with proper orientation
+            template_code, input_point, output_point, ground_point = draw_integrator_template(
+                center_x, center_y, 
+                resistor_value, capacitor_value,
+                use_value_annotation, label_subscript,
+                orientation
+            )
+            
+            # Connect template to grid points with proper short circuits
+            ret = template_code
+            ret += f"\\draw ({x1:.1f},{y1:.1f}) to[short] ({input_point[0]:.1f},{input_point[1]:.1f});\n"
+            ret += f"\\draw ({output_point[0]:.1f},{output_point[1]:.1f}) to[short] ({x2:.1f},{y2:.1f});\n"
             
             # Add measurements if specified
             v_plot_extra = ""
@@ -520,6 +720,16 @@ def get_latex_line_draw(x1, y1, x2, y2,
                 ret += f"\\draw ({x1:.1f},{y1:.1f}) to[short, f{flow_dir}=${measure_label}$] ({x2:.1f},{y2:.1f});\n"
                 
             return ret
+            
+        # Remove other op-amp types since we're focusing only on integrator
+        elif type_number in [TYPE_OPAMP_INVERTING, TYPE_OPAMP_NONINVERTING, TYPE_OPAMP_BUFFER, 
+                           TYPE_OPAMP_DIFFERENTIATOR, TYPE_OPAMP_SUMMING]:
+            
+            # These should not be generated anymore, but include fallback
+            print(f"Warning: Non-integrator op-amp type {type_number} found, converting to integrator")
+            return get_latex_line_draw(x1, y1, x2, y2, TYPE_OPAMP_INTEGRATOR, label_subscript, value, value_unit,
+                                     use_value_annotation, style, measure_type, measure_label, measure_direction,
+                                     control_label, label_subscript_type, direction, note)
 
     elif style == "american":
         pass
@@ -1034,57 +1244,61 @@ class Circuit:
                     else:
                         spice_str += "%s %s %s %s %s %s\n" %  (device_name,  br["n1"],   br["n2"],   control_n1,  control_n2,  value_write)
 
-                # 🔷 OP-AMP CONFIGURATIONS - Use subcircuit models
-                if br["type"] in [TYPE_OPAMP_INVERTING, TYPE_OPAMP_NONINVERTING, TYPE_OPAMP_BUFFER, 
-                                TYPE_OPAMP_INTEGRATOR, TYPE_OPAMP_DIFFERENTIATOR, TYPE_OPAMP_SUMMING]:
+                # 🔷 INTEGRATOR OP-AMP TEMPLATE - Generate complete integrator circuit
+                if br["type"] == TYPE_OPAMP_INTEGRATOR:
                     
-                    # Generate subcircuit call for op-amp configuration
-                    if br["type"] == TYPE_OPAMP_INVERTING:
-                        # Inverting amplifier: X<name> inp inn out vcc vee opamp_model
-                        # For simplicity, use ground as reference and create internal nodes
-                        gain = int(br["value"]) if self.use_value_annotation else 10
-                        spice_str += f"* Inverting amplifier with gain -{gain}\n"
-                        spice_str += f"E{device_name[1:]} {br['n2']} 0 0 {br['n1']} -{gain}\n"
-                        
-                    elif br["type"] == TYPE_OPAMP_NONINVERTING:
-                        # Non-inverting amplifier: gain = 1 + Rf/Rin
-                        gain = int(br["value"]) + 1 if self.use_value_annotation else 11
-                        spice_str += f"* Non-inverting amplifier with gain {gain}\n"
-                        spice_str += f"E{device_name[1:]} {br['n2']} 0 {br['n1']} 0 {gain}\n"
-                        
-                    elif br["type"] == TYPE_OPAMP_BUFFER:
-                        # Unity gain buffer
-                        spice_str += f"* Unity gain buffer\n"
-                        spice_str += f"E{device_name[1:]} {br['n2']} 0 {br['n1']} 0 1\n"
-                        
-                    elif br["type"] == TYPE_OPAMP_INTEGRATOR:
-                        # Integrator: Vout = -1/(RC) * integral(Vin)
-                        # Use Laplace transform: H(s) = -1/(RCs)
-                        rc_value = int(br["value"]) if self.use_value_annotation else 1
-                        spice_str += f"* Integrator with RC = {rc_value}\n"
-                        spice_str += f"E{device_name[1:]} {br['n2']} 0 LAPLACE {{V({br['n1']})}} {{-1/({rc_value}*s)}}\n"
-                        
-                    elif br["type"] == TYPE_OPAMP_DIFFERENTIATOR:
-                        # Differentiator: Vout = -RC * d(Vin)/dt
-                        # Use Laplace transform: H(s) = -RCs
-                        rc_value = int(br["value"]) if self.use_value_annotation else 1
-                        spice_str += f"* Differentiator with RC = {rc_value}\n"
-                        spice_str += f"E{device_name[1:]} {br['n2']} 0 LAPLACE {{V({br['n1']})}} {{-{rc_value}*s}}\n"
-                        
-                    elif br["type"] == TYPE_OPAMP_SUMMING:
-                        # Summing amplifier: Vout = -(Rf/Rin) * Vin
-                        gain = int(br["value"]) if self.use_value_annotation else 10
-                        spice_str += f"* Summing amplifier with gain -{gain}\n"
-                        spice_str += f"E{device_name[1:]} {br['n2']} 0 0 {br['n1']} -{gain}\n"
+                    # Generate complete integrator template with R, C, and op-amp
+                    
+                    # Calculate component values from the original value (time constant)
+                    time_constant = int(br["value"]) if self.use_value_annotation else 1
+                    resistor_value = max(1, time_constant // 10) if time_constant > 10 else 1
+                    capacitor_value = max(1, time_constant - resistor_value) if time_constant > resistor_value else 1
+                    
+                    # Define internal nodes for the integrator template
+                    input_node = br["n1"]          # External input
+                    output_node = br["n2"]         # External output
+                    inverting_node = f"Ninv{device_name[1:]}"  # Internal inverting input node
+                    
+                    spice_str += f"* Integrator template: R-C feedback with op-amp\n"
+                    
+                    # 1. Input resistor: from external input to inverting input
+                    spice_str += f"R{device_name[1:]} {input_node} {inverting_node} {resistor_value}\n"
+                    
+                    # 2. Feedback capacitor: from output back to inverting input
+                    spice_str += f"C{device_name[1:]} {output_node} {inverting_node} {capacitor_value}u\n"  # microfarads
+                    
+                    # 3. Op-amp as ideal VCVS with very high gain (inverting configuration)
+                    # E name out gnd in+ in- gain
+                    # For inverting integrator: Vout = -A * (0 - V_inv) = A * V_inv
+                    high_gain = 100000  # Very high gain for ideal op-amp
+                    spice_str += f"E{device_name[1:]} {output_node} 0 0 {inverting_node} {high_gain}\n"
+                    
+                    # Add current measurement if needed
+                    if br["measure"] == MEAS_TYPE_CURRENT:
+                        mid_node = f"Nmeas{device_name[1:]}"
+                        vmeas_counter += 1
+                        vmeas_str = f"VI{vmeas_counter}"
+                        # Insert voltage source for current measurement at output
+                        spice_str += f"{vmeas_str} {mid_node} {output_node} 0\n"
+                        # Modify the op-amp output to go through the measurement
+                        spice_str = spice_str.replace(f"E{device_name[1:]} {output_node} 0", f"E{device_name[1:]} {mid_node} 0")
+                
+                # 🔷 OTHER OP-AMP TYPES (should not be generated but include fallback)
+                elif br["type"] in [TYPE_OPAMP_INVERTING, TYPE_OPAMP_NONINVERTING, TYPE_OPAMP_BUFFER, 
+                                  TYPE_OPAMP_DIFFERENTIATOR, TYPE_OPAMP_SUMMING]:
+                    
+                    # These should not be generated anymore, but include simple fallback
+                    print(f"Warning: Non-integrator op-amp type {br['type']} found in SPICE generation")
+                    gain = int(br["value"]) if self.use_value_annotation else 10
+                    spice_str += f"* Fallback: Simple op-amp (should be integrator)\n"
+                    spice_str += f"E{device_name[1:]} {br['n2']} 0 0 {br['n1']} -{gain}\n"
                     
                     # Add current measurement if needed
                     if br["measure"] == MEAS_TYPE_CURRENT:
                         mid_node = f"N{br['n1']}{br['n2']}"
                         vmeas_counter += 1
                         vmeas_str = f"VI{vmeas_counter}"
-                        # Insert voltage source for current measurement
                         spice_str += f"{vmeas_str} {mid_node} {br['n2']} 0\n"
-                        # Modify the op-amp output to go through the measurement
                         spice_str = spice_str.replace(f" {br['n2']} 0 ", f" {mid_node} 0 ")
 
         # NOTE: Control Card
@@ -1299,6 +1513,7 @@ class Circuit:
         # Count components that need extra space
         measurement_count = 0
         complex_component_count = 0
+        integrator_count = 0  # Special tracking for integrator templates
         
         for i in range(self.m-1):
             for j in range(self.n):
@@ -1307,6 +1522,8 @@ class Circuit:
                         measurement_count += 1
                     if self.vcomp_type[i][j] in [TYPE_VCCS, TYPE_VCVS, TYPE_CCCS, TYPE_CCVS]:
                         complex_component_count += 1
+                    if self.vcomp_type[i][j] == TYPE_OPAMP_INTEGRATOR:
+                        integrator_count += 1  # Integrators need significantly more space
                         
         for i in range(self.m):
             for j in range(self.n-1):
@@ -1315,29 +1532,32 @@ class Circuit:
                         measurement_count += 1
                     if self.hcomp_type[i][j] in [TYPE_VCCS, TYPE_VCVS, TYPE_CCCS, TYPE_CCVS]:
                         complex_component_count += 1
+                    if self.hcomp_type[i][j] == TYPE_OPAMP_INTEGRATOR:
+                        integrator_count += 1  # Integrators need significantly more space
         
-        # Base spacing
-        base_h_spacing = 3.0
-        base_v_spacing = 3.0
+        # Base spacing - increased for integrator templates
+        base_h_spacing = 4.5 if integrator_count > 0 else 3.5
+        base_v_spacing = 4.5 if integrator_count > 0 else 3.5
         
-        # Calculate complexity factor
+        # Calculate complexity factor with special weighting for integrators
         total_edges = len(self.horizontal_dis) * len(self.vertical_dis)
-        complexity_factor = 1 + (measurement_count + complex_component_count) / max(total_edges, 1)
+        complexity_factor = 1 + (measurement_count + complex_component_count + integrator_count * 2) / max(total_edges, 1)
         
-        # Adaptive spacing - reduced multipliers for more reasonable spacing
-        adaptive_h_spacing = base_h_spacing * max(1.1, complexity_factor * 0.8)
-        adaptive_v_spacing = base_v_spacing * max(1.1, complexity_factor * 0.8)
+        # Adaptive spacing with enhanced multiplier for integrator-heavy circuits
+        integrator_multiplier = 1.3 if integrator_count > 0 else 1.0
+        adaptive_h_spacing = base_h_spacing * max(1.2, complexity_factor * 0.9) * integrator_multiplier
+        adaptive_v_spacing = base_v_spacing * max(1.2, complexity_factor * 0.9) * integrator_multiplier
         
         # Apply adaptive spacing with some randomness
         for i in range(len(self.horizontal_dis)):
             if i > 0:
-                self.horizontal_dis[i] = self.horizontal_dis[i-1] + adaptive_h_spacing + np.random.uniform(-0.3, 0.3)
+                self.horizontal_dis[i] = self.horizontal_dis[i-1] + adaptive_h_spacing + np.random.uniform(-0.4, 0.4)
         
         for i in range(len(self.vertical_dis)):
             if i > 0:
-                self.vertical_dis[i] = self.vertical_dis[i-1] + adaptive_v_spacing + np.random.uniform(-0.3, 0.3)
+                self.vertical_dis[i] = self.vertical_dis[i-1] + adaptive_v_spacing + np.random.uniform(-0.4, 0.4)
         
-        print(f"Adaptive spacing applied: h={adaptive_h_spacing:.2f}, v={adaptive_v_spacing:.2f}, complexity_factor={complexity_factor:.2f}")
+        print(f"Adaptive spacing applied: h={adaptive_h_spacing:.2f}, v={adaptive_v_spacing:.2f}, complexity_factor={complexity_factor:.2f}, integrators={integrator_count}")
 
     def _adjust_font_size(self):
         """Adjust font size based on circuit complexity to reduce overlap"""
@@ -1895,8 +2115,11 @@ def gen_circuit(note="v1", id="", symbolic=False):
         for op, dis in zip(num_grid_options, num_grid_dis):
             num_grid_choices += [op]*dis
  
-        num_comp_dis = [10, 4, 0, 20, 3, 3, 8, 0, 0, 0, 0, 2, 2, 1, 2, 1, 1]  # Short, V, I, R, C, L, Open, VCCS, VCVS, CCCS, CCVS, OpAmp_Inv, OpAmp_NonInv, OpAmp_Buffer, OpAmp_Integrator, OpAmp_Diff, OpAmp_Sum
-        num_comp_dis_outer = [8, 4, 0, 16, 2, 2, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]    # Include op-amps in outer edges with reduced frequency
+        num_comp_dis = [10, 4, 0, 20, 3, 3, 8, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0]  # Only integrator (index 13) allowed, others set to 0
+        num_comp_dis_outer = [8, 4, 0, 16, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0]  # Only integrator in outer edges
+        
+        
+
         num_comp_choices = []
         num_comp_choices_outer = []
         for op, dis in zip(range(17), num_comp_dis):
@@ -1904,8 +2127,8 @@ def gen_circuit(note="v1", id="", symbolic=False):
         for op, dis in zip(range(17), num_comp_dis_outer):
             num_comp_choices_outer += [op]*dis
 
-        vertical_dis_mean, vertical_dis_std = 3.2, 0.3  # Moderate spacing
-        horizontal_dis_mean, horizontal_dis_std = 3.2, 0.3  # Moderate spacing
+        vertical_dis_mean, vertical_dis_std = 4.0, 0.4  # Increased spacing for integrator templates
+        horizontal_dis_mean, horizontal_dis_std = 4.0, 0.4  # Increased spacing for integrator templates
 
         comp_mean_value = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]  # Extended for op-amps
         comp_max_value = [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 50, 50, 1, 10, 10, 50]  # Op-amp specific ranges

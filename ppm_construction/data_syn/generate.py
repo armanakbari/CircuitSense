@@ -65,6 +65,13 @@ def threading_task(task_id, seed, note, gen_num, save_path, symbolic=False):
             "num_shorts": len([1 for br in circ.branches if br['type'] == TYPE_SHORT]),
             "num_voltage_measurements": len([1 for br in circ.branches if br['type'] == TYPE_RESISTOR and br['measure'] == MEAS_TYPE_VOLTAGE]),
             "num_current_measurements": len([1 for br in circ.branches if br['type'] == TYPE_RESISTOR and br['measure'] == MEAS_TYPE_CURRENT]),
+            "num_opamps": len([1 for br in circ.branches if br['type'] in [TYPE_OPAMP_INVERTING, TYPE_OPAMP_NONINVERTING, TYPE_OPAMP_BUFFER, TYPE_OPAMP_INTEGRATOR, TYPE_OPAMP_DIFFERENTIATOR, TYPE_OPAMP_SUMMING]]),
+            "num_opamp_inverting": len([1 for br in circ.branches if br['type'] == TYPE_OPAMP_INVERTING]),
+            "num_opamp_noninverting": len([1 for br in circ.branches if br['type'] == TYPE_OPAMP_NONINVERTING]),
+            "num_opamp_buffer": len([1 for br in circ.branches if br['type'] == TYPE_OPAMP_BUFFER]),
+            "num_opamp_integrator": len([1 for br in circ.branches if br['type'] == TYPE_OPAMP_INTEGRATOR]),
+            "num_opamp_differentiator": len([1 for br in circ.branches if br['type'] == TYPE_OPAMP_DIFFERENTIATOR]),
+            "num_opamp_summing": len([1 for br in circ.branches if br['type'] == TYPE_OPAMP_SUMMING]),
         }
 
         with open(save_path, "a+", encoding='utf-8') as f:
@@ -137,6 +144,13 @@ def stat(args):
         "num_shorts": [],
         "num_voltage_measurements": [],
         "num_current_measurements": [],
+        "num_opamps": [],
+        "num_opamp_inverting": [],
+        "num_opamp_noninverting": [],
+        "num_opamp_buffer": [],
+        "num_opamp_integrator": [],
+        "num_opamp_differentiator": [],
+        "num_opamp_summing": [],
     }
     stat_results = {
         "args": vars(args),
@@ -147,10 +161,17 @@ def stat(args):
         "num_inductors": {},
         "num_voltage_sources": {},
         "num_current_sources": {},
-        "num_controlled_sources": [],
+        "num_controlled_sources": {},
         "num_shorts": {},
         "num_voltage_measurements": {},
         "num_current_measurements": {},
+        "num_opamps": {},
+        "num_opamp_inverting": {},
+        "num_opamp_noninverting": {},
+        "num_opamp_buffer": {},
+        "num_opamp_integrator": {},
+        "num_opamp_differentiator": {},
+        "num_opamp_summing": {},
     }
     for item in data:
         stat_info = item["stat"]
