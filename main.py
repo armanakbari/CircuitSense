@@ -71,6 +71,9 @@ def generate_circuits(paths, args):
     if args.symbolic:
         cmd.extend(["--symbolic"])
     
+    if args.simple_circuits:
+        cmd.extend(["--simple_circuits"])
+    
     success = run_command(cmd, cwd=str(paths['script_dir']), description="Circuit generation")
     
     if success and not data_file.exists():
@@ -116,11 +119,15 @@ def derive_equations(paths, args):
         str(paths['equation_script']),
         "--labels_file", str(labels_file),
         "--output_file", str(equations_output),
-        "--max_circuits", str(args.max_equations)
+        "--max_circuits", str(args.max_equations),
+        "--max_components", str(args.max_components)
     ]
     
     if args.show_sample_equations:
         cmd.append("--show_samples")
+    
+    if args.fast_analysis:
+        cmd.append("--fast_mode")
     
     # Add symbolic question generation if requested
     if hasattr(args, 'generate_symbolic_questions') and args.generate_symbolic_questions:
@@ -162,6 +169,9 @@ Examples:
   %(prog)s --note training_data --gen_num 30 --questions_only --show_sample_equations
   %(prog)s --note production --gen_num 1000 --num_proc 8 --skip_generation
   %(prog)s --note existing_data --skip_visualization --derive_equations --generate_symbolic_questions
+  %(prog)s --note robust_analysis --gen_num 100 --derive_equations --max_components 10 --show_samples
+  %(prog)s --note fast_analysis --gen_num 200 --fast_analysis --max_components 8 --num_proc 4
+  %(prog)s --note efficient_batch --gen_num 500 --simple_circuits --num_proc 8 --skip_visualization
         """)
     
     parser.add_argument(
@@ -195,6 +205,11 @@ Examples:
         action="store_true",
         help="Generate symbolic circuits (component names like R1, C1, V1 instead of numerical values)"
     )
+    generation_group.add_argument(
+        "--simple_circuits",
+        action="store_true",
+        help="Generate simpler circuits with fewer components for faster equation analysis"
+    )
     
     analysis_group = parser.add_argument_group("Equation Analysis Options")
     analysis_group.add_argument(
@@ -222,6 +237,17 @@ Examples:
         "--questions_only",
         action="store_true",
         help="Only generate symbolic questions (implies --derive_equations and --generate_symbolic_questions)"
+    )
+    analysis_group.add_argument(
+        "--max_components",
+        type=int,
+        default=20,
+        help="Skip circuits with more than this many components during equation analysis (default: 20)"
+    )
+    analysis_group.add_argument(
+        "--fast_analysis",
+        action="store_true",
+        help="Use shorter timeouts for faster equation analysis processing"
     )
     
     control_group = parser.add_argument_group("Pipeline Control")

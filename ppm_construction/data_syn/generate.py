@@ -21,11 +21,12 @@ def parse_args():
     parser.add_argument("--save_path", type=str, default="./data/grid/test.json")
     parser.add_argument("--num_proc", type=int, default=8)
     parser.add_argument("--symbolic", action="store_true", help="Generate symbolic circuits (component names instead of values)")
+    parser.add_argument("--simple_circuits", action="store_true", help="Generate simpler circuits for faster equation analysis")
 
     args = parser.parse_args()
     return args
 
-def threading_task(task_id, seed, note, gen_num, save_path, symbolic=False):
+def threading_task(task_id, seed, note, gen_num, save_path, symbolic=False, simple_circuits=False):
     # seed=42
     np.random.seed(seed)
     random.seed(seed)
@@ -34,7 +35,7 @@ def threading_task(task_id, seed, note, gen_num, save_path, symbolic=False):
         while True:
             id = f"{task_id}_{cnt+1}"
             try:
-                circ = gen_circuit(note, id=id, symbolic=symbolic)
+                circ = gen_circuit(note, id=id, symbolic=symbolic, simple_circuits=simple_circuits)
                 latex_code = circ.to_latex()
                 spice_code = circ._to_SPICE()
             except Exception as e:
@@ -91,6 +92,7 @@ def main(args):
     save_path = args.save_path
     num_proc = args.num_proc
     symbolic = args.symbolic
+    simple_circuits = args.simple_circuits
 
     use_concurrent = True
 
@@ -100,12 +102,12 @@ def main(args):
     if use_concurrent:
         with ThreadPoolExecutor(max_workers=num_proc) as executor:
             for i in range(1, num_proc+1):
-                executor.submit(threading_task, i, i, note, gen_num // num_proc, save_path, symbolic)
+                executor.submit(threading_task, i, i, note, gen_num // num_proc, save_path, symbolic, simple_circuits)
 
     else:
         threads = []
         for i in range(1, num_proc+1):
-            thread = threading.Thread(target=threading_task, args=(i, i, note, gen_num // num_proc, save_path, symbolic))
+            thread = threading.Thread(target=threading_task, args=(i, i, note, gen_num // num_proc, save_path, symbolic, simple_circuits))
             threads.append(thread)
             thread.start()
 

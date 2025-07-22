@@ -1,5 +1,5 @@
 import lcapy as lc
-from lcapy import Circuit, s, t
+from lcapy import Circuit, s, t, oo
 
 a = Circuit("""
             R7 0 1 R7
@@ -55,46 +55,47 @@ netlist_1_2 = """
             R12 7 5 R12"""
 
 
-test = """R6 0 1 R6
-V1 4 0 10
-R7 2 1 R7
-R1 4 1 R1
-L3 2 3 L3
-R2 3 N35 R2
-V_meas1 N35 5 0
-C1 6 4 C1
-C2 4 2 C2
-R3 4 7 R3
-R8 5 2 R8
-R4 2 5 R4
-R9 6 4 R9
-L1 8 6 L1
-R10 4 7 R10
-L2 9 4 L2
-R11 7 5 R11
-R5 7 5 R5
-R12 9 8 R12
-R13 7 9 R13
-R14 7 5 R14"""
-
-
-test_1_1 = Circuit(test)
-
-print(test_1_1.transfer('L1', 'C1'))
+test = """R9 1 0 R9
+R1 1 2 R1
+V1 1 2 DC 10
+R2 0 3 R2
+R3 2 4 R3
+R4 5 1 R4
+C1 4 3 C1
+R5 3 4 R5
+L2 5 4 L2
+L1 6 5 L1
+R6 4 7 R6
+L3 4 6 L3
+R7 8 4 R7
+R8 6 9 R8
+R10 8 7 R10
+Rint1 8 Ninv1 Rint1
+Cint1 9 Ninv1 Cint1
+Eint1 9 0 8 0 GainIntegrator"""
 
 
 
 
 
+test1_4 = """
+V1 1 0 V1
+Rint1 2 Ninv1 Rint1
+Cint1 0 Ninv1 Cint1
+Eint1 0 0 opamp 0 Ninv1 Ad
+R1 3 1 R1
+R2 3 2 R2"""
 
 
+test_1_4 = Circuit(test1_4)
 
-
-# H = netlist_1_1.transfer((3,4), 'C1')
-# print(H)
-
-n = test_1_1.nodal_analysis(node_prefix='n')
+n = test_1_4.nodal_analysis(node_prefix='n')
 print(n.nodal_equations())
 
 
 
+#print(test_1_1.transfer('L1', 'C1'))
+
+
+# H = netlist_1_1.transfer((3,4), 'C1')
+# print(H)
