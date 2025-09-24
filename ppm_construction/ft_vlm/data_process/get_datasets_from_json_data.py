@@ -139,7 +139,7 @@ def main():
     
     print(f"Got {len(data)} data items ...")
 
-    _, done, not_done = complie_latex_codes(data, output_dir=dataset_path, recompile=False)
+    _, done, not_done = complie_latex_codes(data, output_dir=dataset_path, recompile=True)
 
     print(f"Compiled {len(done)} files, {len(not_done)} files not compiled ...")
 

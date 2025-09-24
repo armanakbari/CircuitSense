@@ -728,9 +728,9 @@ def get_latex_line_draw(x1, y1, x2, y2,
             
             else:
                 if type_number == TYPE_VCCS or type_number == TYPE_VCVS:
-                    labl = f"x_{{ {label_subscript} }} V_{{ {control_label} }}"
+                    labl = f"\\beta_{{ {label_subscript} }} V_{{ {control_label} }}"
                 elif type_number == TYPE_CCCS or type_number == TYPE_CCVS:
-                    labl = f"x_{{ {label_subscript} }} I_{{ {control_label} }}"
+                    labl = f"\\alpha_{{ {label_subscript} }} I_{{ {control_label} }}"
 
         print(f'labl: {labl}')
 
@@ -882,12 +882,6 @@ def get_latex_line_draw(x1, y1, x2, y2,
         
 # NOTE: plot controlled voltage source
         elif type_number in [TYPE_VCVS, TYPE_CCVS]:
-            # Ensure correct symbolic label for voltage-output dependent sources (use x)
-            if not use_value_annotation:
-                if type_number == TYPE_VCVS:
-                    labl = f"x_{{ {label_subscript} }} V_{{ {control_label} }}"
-                else:  # TYPE_CCVS
-                    labl = f"x_{{ {label_subscript} }} I_{{ {control_label} }}"
             ret = f"\\draw ({x1:.1f},{y1:.1f}) to [short, v=${labl}$] ({x2:.1f},{y2:.1f});\n\\draw ({x1:.1f},{y1:.1f}) to[cvsource] ({x2:.1f},{y2:.1f});"
 
             if not meas_comp_same_direction:
@@ -900,12 +894,6 @@ def get_latex_line_draw(x1, y1, x2, y2,
 
 # NOTE：plot controlled current source - ENHANCED for collision avoidance
         elif type_number in [TYPE_VCCS, TYPE_CCCS]:
-            # Ensure correct symbolic label for current-output dependent sources (use y)
-            if not use_value_annotation:
-                if type_number == TYPE_VCCS:
-                    labl = f"y_{{ {label_subscript} }} V_{{ {control_label} }}"
-                else:  # TYPE_CCCS
-                    labl = f"y_{{ {label_subscript} }} I_{{ {control_label} }}"
             ret = f"\\draw ({x1:.1f},{y1:.1f}) to[cisource] ({x2:.1f},{y2:.1f});\n"
 
             cur_mode_choices = [CUR_MODE_1, CUR_MODE_2] * 10 + [CUR_MODE_3, CUR_MODE_4] * 0 + [CUR_MODE_5, CUR_MODE_6] * 1
@@ -1331,7 +1319,7 @@ class Circuit:
         self._init_netlist() # init netlist, and check if the circuit is valid by the topology
         
         # Collect controlling measurement labels so we can selectively draw probes when needed
-        if getattr(self, 'valid', False):
+        if getattr(self, 'no_meas', False) and getattr(self, 'valid', False):
             self._collect_controller_measure_labels()
         
         # Apply adaptive spacing after all components are set up
@@ -1743,41 +1731,32 @@ class Circuit:
                                 break
                     control_measure_str = f"VI{control_vmeas_counter}"
 
-                    # Symbolic gain value when not using numeric annotations
-                    gain_value = value_write
-                    if not self.use_value_annotation:
-                        gain_value = f"y_{int(br['label'])}" if br["type"] == TYPE_CCCS else f"x_{int(br['label'])}"
-
                     if br["measure"] == MEAS_TYPE_CURRENT:
                         mid_node = "N%s%s" % (_map_node_name(br['n1']), _map_node_name(br['n2']))
                         vmeas_counter += 1
                         vmeas_str = f"VI{vmeas_counter}"
-                        spice_str += "%s %s %s %s %s\n" %  (device_name,  _map_node_name(br["n1"]),   mid_node,   control_measure_str,  gain_value)
+                        spice_str += "%s %s %s %s %s\n" %  (device_name,  _map_node_name(br["n1"]),   mid_node,   control_measure_str,  value_write)
                         spice_str += "%s %s %s 0\n" %       (vmeas_str,             mid_node,   _map_node_name(br["n2"])) if meas_comp_same_direction \
                                 else "%s %s %s 0\n" % (vmeas_str, _map_node_name(br["n2"]), mid_node)
                     else:
-                        spice_str += "%s %s %s %s %s\n" %   (device_name,  _map_node_name(br["n1"]),   _map_node_name(br["n2"]),  control_measure_str,   gain_value)
+                        spice_str += "%s %s %s %s %s\n" %   (device_name,  _map_node_name(br["n1"]),   _map_node_name(br["n2"]),  control_measure_str,   value_write)
             
-                if br["type"] in [TYPE_VCVS, TYPE_VCCS]:    
+                if br["type"] in [TYPE_VCVS, TYPE_VCCS]:    # 压控电压源、压控电流源
 
                     tmp = [(b['n1'], b['n2']) for b in self.branches if b['measure_label'] == br['control_measure_label'] and b['measure'] == MEAS_TYPE_VOLTAGE]
                     assert len(tmp) == 1, "Controlled Source should have one and only one voltage measurement, but got %d, %d" % (len(tmp), br['control_measure_label'])
 
                     control_n1, control_n2 = tmp[0]
 
-                    gain_value = value_write
-                    if not self.use_value_annotation:
-                        gain_value = f"y_{int(br['label'])}" if br["type"] == TYPE_VCCS else f"x_{int(br['label'])}"
-
                     if br["measure"] == MEAS_TYPE_CURRENT:
                         mid_node = "N%s%s" % (_map_node_name(br['n1']), _map_node_name(br['n2']))
                         vmeas_counter += 1
                         vmeas_str = f"VI{vmeas_counter}"
-                        spice_str += "%s %s %s %s %s %s\n" %  (device_name,  _map_node_name(br["n1"]),   mid_node,   _map_node_name(control_n1),  _map_node_name(control_n2),  gain_value)
+                        spice_str += "%s %s %s %s %s %s\n" %  (device_name,  _map_node_name(br["n1"]),   mid_node,   _map_node_name(control_n1),  _map_node_name(control_n2),  value_write)
                         spice_str += "%s %s %s 0\n" %       (vmeas_str,             mid_node,   _map_node_name(br["n2"])) if meas_comp_same_direction \
                                 else "%s %s %s 0\n" % (vmeas_str, _map_node_name(br["n2"]), mid_node)
                     else:
-                        spice_str += "%s %s %s %s %s %s\n" %  (device_name,  _map_node_name(br["n1"]),   _map_node_name(br["n2"]),   _map_node_name(control_n1),  _map_node_name(control_n2),  gain_value)
+                        spice_str += "%s %s %s %s %s %s\n" %  (device_name,  _map_node_name(br["n1"]),   _map_node_name(br["n2"]),   _map_node_name(control_n1),  _map_node_name(control_n2),  value_write)
 
                 # 🔷 INTEGRATOR OP-AMP TEMPLATE - Generate complete integrator circuit
                 if br["type"] == TYPE_OPAMP_INTEGRATOR:
@@ -1970,13 +1949,16 @@ class Circuit:
             if int(self.note[1:]) < 9: # <= version 4
                 raise NotImplementedError
             else:
-                # Determine whether to show only controller-linked measurements
+                # Determine whether to show this measurement in no-meas mode
                 v_meas_type = self.vcomp_measure[i][j]
                 v_meas_label = self.vcomp_measure_label[i][j]
-                show_meas = (
-                    (v_meas_type == MEAS_TYPE_VOLTAGE and int(v_meas_label) in self.controller_voltage_labels) or
-                    (v_meas_type == MEAS_TYPE_CURRENT and int(v_meas_label) in self.controller_current_labels)
-                )
+                show_meas = True
+                if getattr(self, 'no_meas', False):
+                    show_meas = False
+                    if v_meas_type == MEAS_TYPE_VOLTAGE and int(v_meas_label) in self.controller_voltage_labels:
+                        show_meas = True
+                    elif v_meas_type == MEAS_TYPE_CURRENT and int(v_meas_label) in self.controller_current_labels:
+                        show_meas = True
                 new_line = get_latex_line_draw(self.horizontal_dis[j], self.vertical_dis[i], self.horizontal_dis[j], self.vertical_dis[i+1],
                                                 self.vcomp_type[i][j], 
                                                 self.vcomp_label[i][j], 
@@ -2001,13 +1983,16 @@ class Circuit:
             if int(self.note[1:]) < 9: # <= version 4
                 raise NotImplementedError
             else:
-                # Determine whether to show only controller-linked measurements
+                # Determine whether to show this measurement in no-meas mode
                 h_meas_type = self.hcomp_measure[i][j]
                 h_meas_label = self.hcomp_measure_label[i][j]
-                show_meas = (
-                    (h_meas_type == MEAS_TYPE_VOLTAGE and int(h_meas_label) in self.controller_voltage_labels) or
-                    (h_meas_type == MEAS_TYPE_CURRENT and int(h_meas_label) in self.controller_current_labels)
-                )
+                show_meas = True
+                if getattr(self, 'no_meas', False):
+                    show_meas = False
+                    if h_meas_type == MEAS_TYPE_VOLTAGE and int(h_meas_label) in self.controller_voltage_labels:
+                        show_meas = True
+                    elif h_meas_type == MEAS_TYPE_CURRENT and int(h_meas_label) in self.controller_current_labels:
+                        show_meas = True
                 new_line = get_latex_line_draw(self.horizontal_dis[j], self.vertical_dis[i], self.horizontal_dis[j+1], self.vertical_dis[i],
                                                 self.hcomp_type[i][j], 
                                                 self.hcomp_label[i][j], 
@@ -2810,7 +2795,7 @@ def gen_circuit(note="v1", id="", symbolic=False, simple_circuits=False, integra
         
         num_comp_dis = [12,  4, 0, 15, 6, 5, 8,    1,    4,    3,    4,    0,        0,            0,      0,          0,             0]  
                     # short, V, I, R,  C, L, open, VCCS, VCVS, CCCS, CCVS, invertor, noninverting, buffer, integrator, differentiator, summing
-        num_comp_dis_outer = [10, 4, 0, 10, 1, 1, 0, 3, 3, 2, 1, 0, 0, 0, 0, 0, 0]  # Reduced complexity on outer edges
+        num_comp_dis_outer = [10, 4, 0, 10, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  # Reduced complexity on outer edges
 
         num_comp_choices = []
         num_comp_choices_outer = []
@@ -2911,16 +2896,9 @@ def gen_circuit(note="v1", id="", symbolic=False, simple_circuits=False, integra
                     comp_cnt[vcomp_type[i][j]] += 1
                     vcomp_label[i][j] = comp_cnt[vcomp_type[i][j]]
 
-                    # Assign measurement only if NOT a dependent source edge
-                    proposed_measure = np.random.choice(meas_choices)
-                    proposed_label = int(np.random.choice(meas_label_choices))
-                    if vcomp_type[i][j] in [TYPE_VCCS, TYPE_VCVS, TYPE_CCCS, TYPE_CCVS]:
-                        vcomp_measure[i][j] = MEAS_TYPE_NONE
-                        vcomp_measure_label[i][j] = -1
-                    else:
-                        vcomp_measure[i][j] = proposed_measure
-                        vcomp_measure_label[i][j] = proposed_label
-                        meas_label_stat[proposed_measure].append(proposed_label)
+                    vcomp_measure[i][j] = np.random.choice(meas_choices)
+                    vcomp_measure_label[i][j] = np.random.choice(meas_label_choices)
+                    meas_label_stat[vcomp_measure[i][j]].append(vcomp_measure_label[i][j])
                     vcomp_direction[i][j] = int(random.random() < meas_dir_prob)
 
                     print(f"\n\nvcomp_type[{i}][{j}]: {vcomp_type[i][j]}, vcomp_value[{i}][{j}]: {vcomp_value[i][j]}, vcomp_value_unit[{i}][{j}]: {vcomp_value_unit[i][j]}")
@@ -2946,16 +2924,9 @@ def gen_circuit(note="v1", id="", symbolic=False, simple_circuits=False, integra
                     comp_cnt[hcomp_type[i][j]] += 1
                     hcomp_label[i][j] = comp_cnt[hcomp_type[i][j]]
 
-                    # Assign measurement only if NOT a dependent source edge
-                    proposed_measure_h = np.random.choice(meas_choices)
-                    proposed_label_h = int(np.random.choice(meas_label_choices))
-                    if hcomp_type[i][j] in [TYPE_VCCS, TYPE_VCVS, TYPE_CCCS, TYPE_CCVS]:
-                        hcomp_measure[i][j] = MEAS_TYPE_NONE
-                        hcomp_measure_label[i][j] = -1
-                    else:
-                        hcomp_measure[i][j] = proposed_measure_h
-                        hcomp_measure_label[i][j] = proposed_label_h
-                        meas_label_stat[proposed_measure_h].append(proposed_label_h)
+                    hcomp_measure[i][j] = np.random.choice(meas_choices)
+                    hcomp_measure_label[i][j] = np.random.choice(meas_label_choices)
+                    meas_label_stat[hcomp_measure[i][j]].append(hcomp_measure_label[i][j])
                     hcomp_direction[i][j] = int(random.random() < meas_dir_prob)
 
                     print(f"\n\nhcomp_type[{i}][{j}]: {hcomp_type[i][j]}, hcomp_value[{i}][{j}]: {hcomp_value[i][j]}, hcomp_value_unit[{i}][{j}]: {hcomp_value_unit[i][j]}")
@@ -2966,11 +2937,6 @@ def gen_circuit(note="v1", id="", symbolic=False, simple_circuits=False, integra
             num_ic_sources = len(IC_sources["v"]) + len(IC_sources["h"])
             num_vmeas = len(meas_label_stat[MEAS_TYPE_VOLTAGE])
             num_imeas = len(meas_label_stat[MEAS_TYPE_CURRENT])
-
-            # Enforce: total dependent sources must be 1 or 2
-            total_dep_sources = num_vc_sources + num_ic_sources
-            if total_dep_sources < 1 or total_dep_sources > 2:
-                continue
 
             if (num_vc_sources > 0 and num_vmeas == 0) or (num_ic_sources > 0 and num_imeas == 0):
                 continue

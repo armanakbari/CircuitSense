@@ -74,6 +74,16 @@ def generate_circuits(paths, args):
     if args.simple_circuits:
         cmd.extend(["--simple_circuits"])
     
+    if args.integrator:
+        cmd.extend(["--integrator"])
+    
+    if getattr(args, 'rlc', False):
+        cmd.extend(["--rlc"])
+
+    # Forward no-measurements flag to generator
+    if getattr(args, 'no_meas', False):
+        cmd.extend(["--no-meas"])
+    
     success = run_command(cmd, cwd=str(paths['script_dir']), description="Circuit generation")
     
     if success and not data_file.exists():
@@ -172,6 +182,7 @@ Examples:
   %(prog)s --note robust_analysis --gen_num 100 --derive_equations --max_components 10 --show_samples
   %(prog)s --note fast_analysis --gen_num 200 --fast_analysis --max_components 8 --num_proc 4
   %(prog)s --note efficient_batch --gen_num 500 --simple_circuits --num_proc 8 --skip_visualization
+  %(prog)s --note integrator_circuits --gen_num 100 --integrator --derive_equations
         """)
     
     parser.add_argument(
@@ -209,6 +220,22 @@ Examples:
         "--simple_circuits",
         action="store_true",
         help="Generate simpler circuits with fewer components for faster equation analysis"
+    )
+    generation_group.add_argument(
+        "--integrator",
+        action="store_true",
+        help="Guarantee exactly one integrator op-amp in each generated circuit"
+    )
+    generation_group.add_argument(
+        "--rlc",
+        action="store_true",
+        help="Generate RLC networks: enforce one AC V source (negative at node 0) and at least one reactive component"
+    )
+    generation_group.add_argument(
+        "--no-meas",
+        dest="no_meas",
+        action="store_true",
+        help="Hide all probe drawings except those required to control dependent sources"
     )
     
     analysis_group = parser.add_argument_group("Equation Analysis Options")

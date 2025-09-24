@@ -22,11 +22,13 @@ def parse_args():
     parser.add_argument("--num_proc", type=int, default=8)
     parser.add_argument("--symbolic", action="store_true", help="Generate symbolic circuits (component names instead of values)")
     parser.add_argument("--simple_circuits", action="store_true", help="Generate simpler circuits for faster equation analysis")
+    parser.add_argument("--integrator", action="store_true", help="Guarantee exactly one integrator op-amp in each generated circuit")
+    parser.add_argument("--no-meas", dest="no_meas", action="store_true", help="Hide all probe drawings except those required to control dependent sources")
 
     args = parser.parse_args()
     return args
 
-def threading_task(task_id, seed, note, gen_num, save_path, symbolic=False, simple_circuits=False):
+def threading_task(task_id, seed, note, gen_num, save_path, symbolic=False, simple_circuits=False, integrator=False, no_meas=False):
     # seed=42
     np.random.seed(seed)
     random.seed(seed)
@@ -35,7 +37,7 @@ def threading_task(task_id, seed, note, gen_num, save_path, symbolic=False, simp
         while True:
             id = f"{task_id}_{cnt+1}"
             try:
-                circ = gen_circuit(note, id=id, symbolic=symbolic, simple_circuits=simple_circuits)
+                circ = gen_circuit(note, id=id, symbolic=symbolic, simple_circuits=simple_circuits, integrator=integrator, no_meas=no_meas)
                 latex_code = circ.to_latex()
                 spice_code = circ._to_SPICE()
             except Exception as e:
@@ -93,6 +95,8 @@ def main(args):
     num_proc = args.num_proc
     symbolic = args.symbolic
     simple_circuits = args.simple_circuits
+    integrator = args.integrator
+    no_meas = args.no_meas
 
     use_concurrent = True
 
@@ -102,12 +106,12 @@ def main(args):
     if use_concurrent:
         with ThreadPoolExecutor(max_workers=num_proc) as executor:
             for i in range(1, num_proc+1):
-                executor.submit(threading_task, i, i, note, gen_num // num_proc, save_path, symbolic, simple_circuits)
+                executor.submit(threading_task, i, i, note, gen_num // num_proc, save_path, symbolic, simple_circuits, integrator, no_meas)
 
     else:
         threads = []
         for i in range(1, num_proc+1):
-            thread = threading.Thread(target=threading_task, args=(i, i, note, gen_num // num_proc, save_path, symbolic, simple_circuits))
+            thread = threading.Thread(target=threading_task, args=(i, i, note, gen_num // num_proc, save_path, symbolic, simple_circuits, integrator, no_meas))
             threads.append(thread)
             thread.start()
 
