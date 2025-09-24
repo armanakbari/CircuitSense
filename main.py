@@ -7,7 +7,7 @@ import subprocess
 import time
 from pathlib import Path
 
-
+#main file
 def setup_paths():
     script_dir = Path(__file__).parent.absolute()
     
