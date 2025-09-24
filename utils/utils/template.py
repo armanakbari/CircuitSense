@@ -43,7 +43,7 @@ en_template = [
 'This image can be best described as:',
 ]
 
-en_template_q = [ # from gpt-4
+en_template_q = [             
     "Describe the image.",
     "Give me a summary of this image.",
     "What do you see in the picture?",
@@ -64,7 +64,7 @@ en_template_q = [ # from gpt-4
     "Discuss the elements of the picture.",
     "Provide insight into this image.",
     "What's going on in this photo?"
-] + [ # from https://github.com/shikras/shikra/blob/main/config/_base_/dataset/template/image_cap.json
+] + [                                                                                                 
   "Describe this image as simply as possible.",
   "What happened in the picture? Answer in short sentences.",
   "Briefly say the content of this scene",

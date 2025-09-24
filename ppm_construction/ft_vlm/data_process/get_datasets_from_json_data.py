@@ -1,7 +1,7 @@
 import os
 import sys
 
-# Add the root directory to Python path to find utils module
+                                                            
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.join(current_dir, '..', '..', '..')
 sys.path.insert(0, root_dir)
@@ -26,18 +26,18 @@ dataset_path = "../../../datasets/{}".format(note)
 img_suffix = ".jpg"
 
 def complie_latex_codes(latex_codes, output_dir, recompile=True):
-    """
-    Compile a list of latex codes into pdf files.
-    latex_code: {
-        "id": "xxx",
-        "latex": "xxx",
-        ...
-    }
-    """
+\
+\
+\
+\
+\
+\
+\
+       
 
     def compile_latex_code(latex_, recompile=recompile):
         print(f"compiling {latex_['id']}...")
-        # file_name = os.path.basename(latex_file).split(".")[0]
+                                                                
 
         file_name = latex_['id']
 
@@ -63,8 +63,8 @@ def complie_latex_codes(latex_codes, output_dir, recompile=True):
     compiled_codes, not_compiled_latex_codes = check_compiled_latex_codes(latex_codes, output_dir=output_dir)
     print(f"not_compiled_latex_codes: {not_compiled_latex_codes}")
     
-    # os.system(f"rm {output_dir}/**.aux")
-    # os.system(f"rm {output_dir}/**.log")
+                                          
+                                          
     return list(results), compiled_codes, not_compiled_latex_codes
 
 
@@ -113,11 +113,11 @@ def make_datasets(latex_codes, dataset_path, zoom_x=1, zoom_y=1, rotation_angle=
     print(f"num_ai_valid: {num_ai_valid}, num_grid_valid: {num_grid_valid}, num_other_valid: {num_other_valid}")
 
 def check_compiled_latex_codes(latex_codes, output_dir):
-    """
-    Check if the pdf files corresponding to the latex files are already compiled.
-    """
+\
+\
+       
     def check_compiled(latex_code):
-        # file_name = os.path.basename(latex_file).split(".")[0]
+                                                                
         file_name = latex_code['id']
         return {file_name: os.path.exists(f"{output_dir}/{file_name}.pdf")}
     
@@ -146,5 +146,5 @@ def main():
     make_datasets(data, dataset_path, zoom_x=3, zoom_y=3, rotation_angle=0, rm_suffixs=[])
 
 if __name__ == "__main__":
-    # debug()
+             
     main()

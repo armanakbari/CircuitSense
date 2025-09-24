@@ -1,7 +1,7 @@
 import os
 import torch
 import argparse
-# from functools import partial
+                               
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -17,7 +17,7 @@ import json
 
 def data_collator(examples, cross_image_processor=None):
     def to_tensor(value):
-        """Converts lists or numpy arrays to tensors."""
+                                                        
         if isinstance(value, list):
             return torch.tensor(value)
         elif isinstance(value, np.ndarray):
@@ -25,24 +25,24 @@ def data_collator(examples, cross_image_processor=None):
         return value
     
     def concatenate_tensors(attribute, key):
-        """Concatenates tensors for a specific attribute and key."""
+                                                                    
         if attribute is None:
             return torch.cat([ex[key] for ex in examples if isinstance(ex[key], torch.Tensor)])
         else:
             return torch.cat([ex[attribute][key] for ex in examples if isinstance(ex[attribute][key], torch.Tensor)])
 
-    # Convert all lists and numpy arrays in examples to tensors
+                                                               
     for example in examples:
         for key, value in example.items():
             example[key] = to_tensor(value)
 
-    # Extract and concatenate attributes from examples
+                                                      
     img_args = {}
     for attribute in ['vision', 'cross']:
         if attribute == 'cross' and cross_image_processor is None:
             continue
 
-        if attribute in examples[-1]:  # Using the last example as reference
+        if attribute in examples[-1]:                                       
             for key in examples[-1][attribute]:
                 tensor_key = f"{attribute}_{key}"
                 tensors_to_concatenate = [ex[attribute][key] for ex in examples if isinstance(ex[attribute][key], torch.Tensor)]
@@ -51,23 +51,23 @@ def data_collator(examples, cross_image_processor=None):
                 else:
                     img_args[tensor_key] = examples[-1][attribute][key]
 
-    # Remove 'vision' and 'cross' keys from examples
+                                                    
     for example in examples:
         example.pop('vision', None)
         example.pop('cross', None)
 
-    # Create model_args by concatenating tensors and copying other attributes
+                                                                             
     model_args = {key: concatenate_tensors(None, key) 
                   if isinstance(examples[-1][key], torch.Tensor) else examples[-1][key] 
                   for key in examples[-1]
                   }
     
-    # Merge img_args into model_args
+                                    
     model_args.update(img_args)
     return model_args
 
 def broadcast_auto(data_dict):
-    # Classify keys based on their data type
+                                            
     tensor_keys_by_dtype = defaultdict(list)
     non_tensor_keys = []
 
@@ -77,26 +77,26 @@ def broadcast_auto(data_dict):
         else:
             non_tensor_keys.append(key)
 
-    # Broadcast tensor data and collect in a new dictionary
+                                                           
     broadcasted_data = {}
     for dtype, keys in tensor_keys_by_dtype.items():
         broadcasted_data.update(mpu.broadcast_data(keys, data_dict, dtype))
 
-    # Add non-tensor data to the new dictionary
+                                               
     for key in non_tensor_keys:
         broadcasted_data[key] = data_dict[key]
 
     return broadcasted_data
 
 def get_batch(data_iterator, args, timers):
-    # Broadcast data.
+                     
     timers('data loader').start()
     if data_iterator is not None:
-        # try:
+              
         data = next(data_iterator)
-        # except StopIteration:
-        #     print_rank0('Reached the end of the dataset')
-        #     return None
+                               
+                                                           
+                         
     else:
         data = None
     timers('data loader').stop()
@@ -124,8 +124,8 @@ def chat(model, tokenizer, tokens,
         [inputs, torch.tensor([-1] * (max_length - len(inputs)), device=inputs.device)], dim=0
     )
     strategy = BaseStrategy(temperature=temperature, top_p=0.4, top_k=1, end_tokens=[tokenizer.eos_token_id])
-    # strategy = BeamSearchStrategy(temperature=temperature, top_p=top_p, top_k=top_k, end_tokens=[tokenizer.eos_token_id],
-    #                               num_beams=num_beams, consider_end=True)
+                                                                                                                           
+                                                                           
     get_func = llama2_text_processor_inference.get_func(None, None, image_rope_mask=kwargs['image_rope_mask'])
     output = filling_sequence(
         model, seq,
@@ -133,7 +133,7 @@ def chat(model, tokenizer, tokens,
         strategy=strategy,
         get_masks_and_position_ids=get_func,
         **kwargs
-    )[0]  # drop memory
+    )[0]               
 
     return output
 
@@ -144,16 +144,16 @@ def forward_step_eval(data_iterator, model, args, timers):
         run_simualtion_w_timeout = lambda spice_code: run_process_with_timeout(func=process_single_simulation, args=(spice_code, qid), timeout=timeout)
         pred_ret = run_simualtion_w_timeout(pred)
         label_ret = run_simualtion_w_timeout(label)
-        # pred_ret.pop('error')
+                               
 
         is_numerical = ('error' in label_ret)
         if is_numerical and 'error' in pred_ret:
             return False, is_numerical
         elif is_numerical and 'error' not in pred_ret:
             return  check_equal_measurements(pred_ret['sim_ret'], label_ret['sim_ret']), is_numerical
-        else:   # not numerical
+        else:                  
             return False, is_numerical
-        # return, is_numerical
+                              
 
     def compute_metrics(eval_preds):
         preds, labels, qids, device = eval_preds
@@ -162,7 +162,7 @@ def forward_step_eval(data_iterator, model, args, timers):
             preds = preds[0]
         decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
         if args.ignore_pad_token_for_loss:
-            # Replace -100 in the labels as we can't decode them.
+                                                                 
             labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
         decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
 
@@ -176,7 +176,7 @@ def forward_step_eval(data_iterator, model, args, timers):
             qids = [qids]
         assert len(decoded_preds) == len(decoded_labels) == len(qids), f"len(decoded_preds): {len(decoded_preds)}, len(decoded_labels): {len(decoded_labels)}, len(qids): {len(qids)}"
         for pred, label, qid in zip(decoded_preds, decoded_labels, qids):
-            # assert '-' in qid, f"qid: {qid}"
+                                              
 
             print(f"QID: {qid}")
 
@@ -193,14 +193,14 @@ def forward_step_eval(data_iterator, model, args, timers):
                 else:
                     score_dict['acc_w/o_case'].append(0.)
                             
-                # TODO: valid acc two split: synthetic and real
-                # acc_sim_key = 'acc_sim_real' if 'yxj' in qid else 'acc_sim_syn'
-                # if '<Empty>' not in label:  # only consider numerical circuits
-                #     if check_simulation_acc(pred, label, qid):
-                #         score_dict[acc_sim_key].append(1.)
-                #     else:
-                #         # if '<Empty>' not in label:
-                #         score_dict[acc_sim_key].append(0.)
+                                                               
+                                                                                 
+                                                                                
+                                                                
+                                                            
+                           
+                                                      
+                                                            
 
                 if args.pred_latex:
                     compiled_ret = compile_latex(os.path.dirname(args.eval_results_path), qid, pred)
@@ -233,18 +233,18 @@ def forward_step_eval(data_iterator, model, args, timers):
                 score_dict[k] = float(np.mean(v))
         return score_dict
 
-    # Get the batch.
+                    
     timers('batch generator').start()
     data_b = get_batch(
         data_iterator, args, timers)
-    # if data_b is None:
-    #     return torch.tensor(0), {}
+                        
+                                    
     timers('batch generator').stop()
-    # for k in data_b:
-        # print(f"data_b[{k}]: {data_b[k]}")
+                      
+                                            
     print(f"keys: {data_b.keys()}")
     context_len = int(data_b['context_length'][0])
-    # print(f"context_len: {context_len}")
+                                          
     tokens = data_b['input_ids'][:, :context_len]
     data_b['vision_expert_mask'] = data_b['vision_expert_mask'][:, :context_len]
     data_b['image_embed_mask'] = data_b['image_embed_mask'][:, :context_len]
@@ -256,11 +256,11 @@ def forward_step_eval(data_iterator, model, args, timers):
     labels = data_b.pop('labels')
     qids = data_b.pop('question_id')
     print(f'qids: {qids}')
-    # exit()
+            
 
     model.add_mixin('auto-regressive', CachedAutoregressiveMixin())
     outputs = chat(model, tokenizer, tokens, **data_b)[0][context_len:]
-    # print(outputs)
+                    
     model.del_mixin('auto-regressive')
 
     ret = torch.tensor(0, device=outputs.device)
@@ -272,9 +272,9 @@ def forward_step_eval(data_iterator, model, args, timers):
 
 from torch.nn import CrossEntropyLoss
 def forward_step(data_iterator, model, args, timers):
-    """Forward step."""
+                       
 
-    # Get the batch.
+                    
     timers('batch generator').start()
     data_b = get_batch(
         data_iterator, args, timers)
@@ -282,10 +282,10 @@ def forward_step(data_iterator, model, args, timers):
     timers('batch generator').stop()
     logits = model(**data_b)[0]
     lm_logits = logits.to(torch.float32)
-    # Shift so that tokens < n predict n
+                                        
     shift_labels = labels[..., 1:].contiguous()
     shift_logits = lm_logits[..., -1-shift_labels.size(-1):-1, :].contiguous()
-    # Flatten the tokens
+                        
     loss_fct = CrossEntropyLoss(ignore_index=-100)
     loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
     loss = loss.to(torch.float32)
@@ -330,15 +330,15 @@ if __name__ == '__main__':
 
     if args.only_inference:
         args.eval_results_path.replace(".json", "_infer.json")
-    # if not os.path.exists(os.path.dirname(args.eval_results_path)):
+                                                                     
     os.makedirs(os.path.dirname(args.eval_results_path), exist_ok=True)
     with open(args.eval_results_path, "w") as f:
         f.write("")
     training_main(args, model_cls=model, forward_step_function=forward_step, create_dataset_function=partial(create_dataset_function, image_processor, text_processor, cross_image_processor), collate_fn=partial(data_collator, cross_image_processor=cross_image_processor), forward_step_eval=forward_step_eval)
-    # if args.use_lora:
-    #     model.get_mixin("lora").merge_lora()
-    #     model.get_mixin("eva").vit_model.get_mixin("lora").merge_lora()
-    #     args.use_lora = False
-    #     args.save = "checkpoints/merged_lora_cogagent"
-    #     from sat.training.model_io import save_checkpoint
-    #     save_checkpoint(1, model, None, None, args)
+                       
+                                              
+                                                                         
+                               
+                                                        
+                                                           
+                                                     

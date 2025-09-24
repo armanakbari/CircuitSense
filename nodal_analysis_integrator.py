@@ -6,7 +6,7 @@ print("="*60)
 print("NODAL ANALYSIS OF CIRCUIT WITH IDEAL INTEGRATOR OP AMP")
 print("="*60)
 
-# Original circuit with integrator
+                                  
 original_netlist = """R9 1 0 R9
 R1 1 2 R1
 V1 1 2 DC 10
@@ -38,7 +38,7 @@ print("- Eint1: VCVS that makes V9 = GainIntegrator × V8")
 print("\n2. WHY AUTOMATIC NODAL ANALYSIS FAILS")
 print("lcapy cannot automatically handle the dependent source (VCVS) Eint1")
 
-# Remove the VCVS to analyze the passive part
+                                             
 passive_netlist = """R9 1 0 R9
 R1 1 2 R1
 V1 1 2 DC 10
@@ -61,7 +61,7 @@ passive_circuit = Circuit(passive_netlist)
 
 print("\n3. NODAL ANALYSIS OF PASSIVE CIRCUIT (without VCVS)")
 try:
-    # Perform nodal analysis on passive part
+                                            
     nodal_analysis = passive_circuit.nodal_analysis()
     equations = nodal_analysis.nodal_equations()
     
@@ -70,7 +70,7 @@ try:
     for i, eq in enumerate(equations):
         print(f"Node equation {i+1}: {eq}")
     
-    # Solve the passive circuit
+                               
     print("\n4. DC SOLUTION OF PASSIVE CIRCUIT")
     solution = passive_circuit.solve()
     print("Node voltages (without integrator feedback):")
@@ -108,7 +108,7 @@ print("- Capacitor impedance: Z_C1 = 1/(C1×s)")
 print("- Inductor impedance: Z_L = L×s")  
 print("- Integrator gain: H(s) = -1/(Rint1 × Cint1 × s)")
 
-# Create a simple example to demonstrate the principle
+                                                      
 print("\n9. SIMPLIFIED INTEGRATOR EXAMPLE")
 simple_integrator = """
 Vin 1 0 AC 1

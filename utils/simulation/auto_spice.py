@@ -111,7 +111,7 @@ def op_analysis(config):
             if line.lower().startswith(".op") or line.lower().startswith("op"):
                 file.write("\nprint allv\n")
             elif ";" in line:
-                # comment = line.split(";")[1]
+                                              
                 print(line)
                 match = re.match(r"print\s+([\w\(\)\-\s,]*)\s+;\s+measurement\s+of\s+(\w*)", line)
                 print(match)
@@ -132,9 +132,9 @@ def op_analysis(config):
         result["raw_file"] = file.read()
     with open("output.txt", "r", encoding="utf-8") as file:
         for line in file:
-            # 如果这一行的格式是aaa = bbb，其中aaa是包含字母、数字、下划线、圆括号的字符串，bbb由数字、小数点、e、+、-组成
+                                                                             
             if re.match(r"^[\w\(\)\-,\s]+\s*=\s*[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$", line):
-                # print(line, end="")
+                                     
                 match = re.match(r"^([\w\(\)\-,\s]+)\s*=\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)$", line)
                 if match:
                     print(match.group(0), match.group(1), match.group(2), match.group(3))
@@ -144,10 +144,10 @@ def op_analysis(config):
                     print(f"variable: {variable}, value: {value}\n")
                     if value.is_integer():
                         value = int(value)
-                    # 如果variable被i(xx)或v(xx)包围，去掉括号和括号前面的i/v
-                    # print(f"variable: {variable}, userquery: {simvar2userquery[variable]}")
+                                                            
+                                                                                             
                     if variable in simvar2userquery.keys():
-                        # result[("I" if variable[0] == "i" else "U") + str(user_require_variables.index(variable))] = (
+                                                                                                                        
                         result[ simvar2userquery[variable] ] = (
                             str(value) + ("A" if variable[0] == "i" else "V")
                         )
@@ -159,7 +159,7 @@ def op_analysis(config):
                         else:
                             result[variable] = str(value) + "V"
 
-    # os.remove("output.txt")
+                             
 
     with open(config.output, "w", encoding="utf-8") as file:
         file.write(json.dumps(result, indent=4))

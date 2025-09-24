@@ -2,9 +2,9 @@ import base64
 import httpx
 import json
 import os
-#import openai
+              
 from openai import OpenAI
-# from api_utils import encode_image
+                                    
 import re
 
 from argparse import ArgumentParser
@@ -78,7 +78,7 @@ output_file_path = os.path.join(output_root_path, data_note, f"{note}_step2.json
 output_file_path_step1 = os.path.join(output_root_path, data_note, f"{note_1}_step1_sim.json")
 os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
 
-# inference setting 
+                    
 max_tokens = 2048
 
 prompt_template = "你是一个电路原理专家，你需要求解一道中文电路习题，题目由一张电路图和中文问题组成。我们通过电路识别模型，将电路图转化成了网表语言SPICE代码。同时，我们将SPICE代码放进电路仿真软件中，获得了仿真结果。请你根据电路图、问题、SPICE网表、仿真结果，推理出问题的答案。\n请将最终的数值或者表达式用json格式表示，格式为```json\n{{\n\t待求值1：求解结果1,\n\t待求值2：求解结果2\n}}```。\n如果仿真结果直接包含了答案，你就输出仿真结果得到的答案即可。\n如果仿真出现异常或不包含题目的答案，你需要根据网表和仿真结果进行进一步的推理得到最终结果。\n\n# 问题\n{question}{subq}\n\n # 电路图转成的SPICE网表\n{spice}\n\n # 仿真结果\n{sim_ret}\n\n"

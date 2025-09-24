@@ -1,10 +1,10 @@
 import os
 import argparse
-# from functools import partial
+                               
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
-# from utils.simulation.spice_utils import similarity_by_simulation_node_voltage
+                                                                                
 import concurrent.futures
 
 from utils.simulation.spice2pyspice import spice_to_pyspice
@@ -35,11 +35,11 @@ def parse_args():
     return parser.parse_args()
 
 def float_close(f1, f2, tol=1e-3):
-    """Compare whether two floats are equal within a given tolerance."""
+                                                                        
     return abs(f1 - f2) < tol
 
 def _compare_values(v1, v2, tol=1e-3, ignore_abs=False, ignore_string=False):
-    """Compare two values, which can be floats or lists of floats."""
+                                                                     
     if isinstance(v1, str) and isinstance(v2, str):
         if ignore_string:
             return True
@@ -69,9 +69,9 @@ def _compare_values(v1, v2, tol=1e-3, ignore_abs=False, ignore_string=False):
         return False
     
 def compare_values(v1, v2, tol=1e-3, ignore_abs=False,  ignore_string=False):
-    """Compare two values, which can be floats or lists of floats."""
+                                                                     
     ans = _compare_values(v1, v2, tol, ignore_abs,  ignore_string=ignore_string)
-    # print(f"#"*50)
+                    
     return ans
 
 def normalized_dict(d):
@@ -170,7 +170,7 @@ def preprocess_spice(spice_code):
     if  not spice_code.startswith('.title'):
         spice_code = '.title ' + spice_code
 
-    # add component id
+                      
     cnt = {}
     new_spice_code = ''
     for line in spice_code.split('\n'):
@@ -181,14 +181,14 @@ def preprocess_spice(spice_code):
             print(f"Error: {e} when processing line: {line}")
             new_spice_code += line + '\n'
             continue
-        if len(comp_type) == 1: # No component id
+        if len(comp_type) == 1:                  
             if comp_type not in cnt.keys():
                 cnt[comp_type] = 0
             cnt[comp_type] += 1
             line = comp_type + str(cnt[comp_type]) + ' ' + line[1:]
         new_spice_code += line + '\n'
 
-    # deal with the old version of control card in spice code
+                                                             
     new_spice_code = new_spice_code.replace('.OP', '.control\nop\n').replace('.END', '.endc\n.end').replace('.PRINT DC', 'print').replace('V(0, ', '-v(').replace(', 0)', ')').replace('V(0 ', '-v(').replace(' 0)', ')').replace(' * ', ' ; ')
 
     print(f"Preprocessed Spice Code: {new_spice_code}")
@@ -203,28 +203,28 @@ def process_single_simulation(spice_code, qid, queue):
     circuit = None
     spice_code = preprocess_spice(spice_code)
 
-    # try:
-        # circuit, sim_ret = spice_to_pyspice(spice_code, require_simulation=True)
+          
+                                                                                  
     with open(f'./{qid}.sp', 'w') as f:
         f.write(spice_code)
     os.system(f'python ./utils/simulation/auto_spice.py --circuit {qid}.sp --output {qid}_ret.json')
     with open(f'{qid}_ret.json', 'r', encoding='utf-8') as f:
         sim_ret = json.load(f)
     print(f"Simulation Results: {sim_ret}")
-    # exit()
+            
     os.system(f'rm {qid}.sp {qid}_ret.json')
 
     print('\n\n' + '## Successfully Run Simulation !! ##' + '\n\n')
-    # except Exception as e:
-    #     # print(f"Error: {e} when simulating")
-    #     print(f'Error when simulating [SPICE CODE]\n{spice_code} \n-->\n [ERROR]\n{e}')
-    #     sim_ret = {"error": str(e)}
+                            
+                                                
+                                                                                         
+                                     
 
     os.system(f'rm {qid}.sp {qid}_ret.json')
     
     print(f"Simulation Results: {sim_ret}")
 
-    # Check if simulation was successful
+                                        
     simulation_successful = 'error' not in sim_ret and 'raw_file' in sim_ret and 'Simulation interrupted due to error' not in sim_ret.get('raw_file', '')
     
     ret = {
@@ -274,7 +274,7 @@ def convert_numstr_to_float(num_str):
     for k, v in d.items():
         if k in num_str:
             num_str = num_str.replace(k, v)
-    # print(f"Converted: {num_str}")
+                                    
     try:
         ret = float(num_str)
     except Exception as e:
@@ -308,7 +308,7 @@ def evaluate(result, args):
                 } 
             for r in result]
 
-    # 数值型
+         
     num_no_zr = sum([r['label_valid'] and not r['has_zero_resistor'] for r in result])
 
     num_acc_str_no_zr = sum([r['label_valid'] and not r['has_zero_resistor'] and r['label'].strip() == r['pred'].strip() for r in result])
@@ -317,7 +317,7 @@ def evaluate(result, args):
     num_acc_compstat_no_zr = sum([r['label_valid'] and not r['has_zero_resistor'] and r['comp_stat_equal'] for r in result])
     num_acc_simret_no_zr = sum([r['label_valid'] and not r['has_zero_resistor'] and r['sim_ret_equal'] for r in result])
 
-    # 标签型
+         
     num_zr = sum([r['label_valid'] and r['has_zero_resistor'] for r in result])
     num_acc_str_zr = sum([r['label_valid'] and r['has_zero_resistor'] and r['label'].strip() == r['pred'].strip() for r in result])
     num_acc_predvalid_zr = sum([r['label_valid'] and r['has_zero_resistor'] and r['pred_valid'] for r in result])
@@ -374,7 +374,7 @@ def evaluate(result, args):
         fig_dir = os.path.join(path_dir, path_name.replace('.json', '') + '_figures')
         os.makedirs(fig_dir, exist_ok=True)
 
-        # plot acc vs compnum
+                             
         plt.figure()
         plt.bar(compnum2count.keys(), [compnum2simretacc[k] for k in compnum2count.keys()])
         plt.xlabel('Component Number')
@@ -383,7 +383,7 @@ def evaluate(result, args):
 
         plt.savefig(os.path.join(fig_dir, 'sim_acc_vs_compnum.png'))
 
-        # plot acc vs nodenum
+                             
         plt.figure()
         plt.bar(nodenum2count.keys(), [nodenum2simretacc[k] for k in nodenum2count.keys()])
         plt.xlabel('Node Number of Netlist')
@@ -392,7 +392,7 @@ def evaluate(result, args):
 
         plt.savefig(os.path.join(fig_dir, 'sim_acc_vs_nodenum.png'))
 
-        # plot compnum distribution
+                                   
         plt.figure()
         plt.bar(compnum2count.keys(), [compnum2count[k] for k in compnum2count.keys()])
         plt.xlabel('Component Number')
@@ -401,7 +401,7 @@ def evaluate(result, args):
 
         plt.savefig(os.path.join(fig_dir, 'compnum_distribution.png'))
 
-        # plot nodenum distribution
+                                   
         plt.figure()
         plt.bar(nodenum2count.keys(), [nodenum2count[k] for k in nodenum2count.keys()])
         plt.xlabel('Node Number of Netlist')
@@ -410,7 +410,7 @@ def evaluate(result, args):
 
         plt.savefig(os.path.join(fig_dir, 'nodenum_distribution.png'))
 
-        # os.makedirs(fig_dir, exist_ok=True)
+                                             
     pass
 
     return result
@@ -454,7 +454,7 @@ def main():
 
     data = process_data(data)
 
-    ## NOTE: below is the version of single simulation
+                                                      
     timeout = 5
 
     results = []

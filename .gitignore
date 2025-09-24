@@ -2,3 +2,13 @@ __pycache__
 datasets/*
 *.json
 ppm_construction/data_syn/logs/*.log
+TIMEOUT*.md
+test.py
+SEPARATE*
+opamp_visualization*
+equivalence*
+convert_netlist*
+create_equation_derivation*
+backup_rule*
+inference
+scripts/sctrip*

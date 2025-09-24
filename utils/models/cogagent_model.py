@@ -73,25 +73,25 @@ def override_dist_dtype_device_args(args, b={}):
 
 
 class ExternalVisionModel(BaseMixin):
-    '''A combination of vit and a linear projection'''
+                                                      
     def __init__(self, args, vitclass):
-        '''
-            args: the args to initialize the vit model
-            vitclass: the class of VIT model, must be a subclass of BaseModel
-            project_dim: the dimension of the projection layer
-            default_load: the default load path for the vit model
-            model_parallel_size: the model parallel size for the vit model
-        '''
+\
+\
+\
+\
+\
+\
+           
         super().__init__()
         self.vit = vitclass()
-        # self.ppx = nn.Embedding(80, 1024)
-        # self.ppy = nn.Embedding(80, 1024)
-        # nn.init.uniform_(self.ppx.weight.data)
-        # nn.init.uniform_(self.ppy.weight.data)
+                                           
+                                           
+                                                
+                                                
 
-        # self.pos_embed = nn.Parameter(
-        #     torch.from_numpy(get_2d_sincos_pos_embed(1024, 80)).float()
-        # )
+                                        
+                                                                         
+           
         cross_image_length = (args.cross_image_pix//14)**2
         self.pos_embed = nn.Parameter(
             torch.zeros(cross_image_length, 1024)
@@ -99,13 +99,13 @@ class ExternalVisionModel(BaseMixin):
 
     def forward(self, *args, **kw_args):
         enc = self.vit(*args, **kw_args)
-        # i = torch.arange(80, device=enc.device)
-        # j = torch.arange(80, device=enc.device)
-        # posx = self.ppx(i).unsqueeze(0).repeat(80, 1, 1)
-        # posy = self.ppy(j).unsqueeze(1).repeat(1, 80, 1)
-        # pos = (posx + posy).view(-1, 1024).unsqueeze(0)
+                                                 
+                                                 
+                                                          
+                                                          
+                                                         
 
-        # return enc + pos + self.pos_embed.unsqueeze(0)
+                                                        
         return enc + self.pos_embed.unsqueeze(0)
 
 class ImageMixin(BaseMixin):
@@ -119,12 +119,12 @@ class ImageMixin(BaseMixin):
         self.boi = nn.Parameter(torch.zeros(1, 1, args.hidden_size))
         self.eoi = nn.Parameter(torch.zeros(1, 1, args.hidden_size))
         
-        # self.ppx = nn.Embedding(16,1792)
-        # self.ppy = nn.Embedding(16,1792)
+                                          
+                                          
 
-        # self.pos_embed = nn.Parameter(
-        #     torch.from_numpy(get_2d_sincos_pos_embed(1792, 16)).float()
-        # )
+                                        
+                                                                         
+           
         self.pos_embed = nn.Parameter(
             torch.zeros(self.image_length, 1792)
         )
@@ -138,12 +138,12 @@ class ImageMixin(BaseMixin):
             return self.transformer.word_embeddings(input_ids)
         image_emb = self.vit_model(**vision_inputs)[0]
         
-        # i = torch.arange(16, device=image_emb.device)
-        # j = torch.arange(16, device=image_emb.device)
-        # posx = self.ppx(i).unsqueeze(0).repeat(16, 1, 1)
-        # posy = self.ppy(j).unsqueeze(1).repeat(1, 16, 1)
-        # pos = (posx + posy).view(256, -1).unsqueeze(0)
-        # image_emb = image_emb + pos + self.pos_embed.unsqueeze(0)
+                                                       
+                                                       
+                                                          
+                                                          
+                                                        
+                                                                   
         image_emb = image_emb + self.pos_embed.unsqueeze(0)
             
         image_emb = self.linear_proj(image_emb)
@@ -166,15 +166,15 @@ class CogAgentModel(LLaMAModel):
         self.add_mixin("rotary", LlamaVisionExpertAttnMixin(args.hidden_size, args.num_attention_heads, args.num_layers, 32))
         
         cross_model = ExternalVisionModel(args, vitclass=partial(Eva2LargeEncoder, image_size=self.cross_image_pix))
-        # if args.mode != 'inference':
-        # cross_model.vit.model.set_grad_checkpointing(True)
+                                      
+                                                            
         self.add_mixin("encoder", cross_model)
 
     @classmethod
     def add_model_specific_args(cls, parser):
         group = parser.add_argument_group('CogAgent', 'CogAgent Configurations')
         group.add_argument('--image_length', type=int, default=256)
-        group.add_argument('--cross_image_pix', type=int, default=1120) # Standard CogAgent use 1120; if you want to adjust this param, finetune the model first.
+        group.add_argument('--cross_image_pix', type=int, default=1120)                                                                                          
         group.add_argument('--eva_args', type=json.loads, default={})
         return super().add_model_specific_args(parser)
 
@@ -200,8 +200,8 @@ class FineTuneTrainCogAgentModel(CogAgentModel):
     def __init__(self, args, transformer=None, parallel_output=True, **kw_args):
         super().__init__(args, transformer=transformer, parallel_output=parallel_output, **kw_args)
         self.args = args
-        # If you want to use model parallel with a mp_size=1 checkpoint, and meanwhile you also want to use lora,
-        # you have to add_mixin after loading model checkpoint.
+                                                                                                                 
+                                                               
         
     @classmethod
     def add_model_specific_args(cls, parser):

@@ -15,10 +15,10 @@ def chat_history_to_prompt(self, query, history):
     return prompt
 
 def vqa_history_to_prompt(self, query, history):
-    # Only support single round chat in vqa mode
+                                                
     prompt = "<EOI>Question: "
-    # for i, (old_query, response) in enumerate(history):
-    #     prompt += old_query + " Short answer: " + response + " Question: "
+                                                         
+                                                                            
     prompt += query + " Short answer:"
     return prompt
 
@@ -33,7 +33,7 @@ _history_to_prompt = {
     "base": base_history_to_prompt,
     "chat": chat_history_to_prompt,
     "vqa": vqa_history_to_prompt,
-    "chat_old": chat_old_history_to_prompt, # for cogvlm-v1.1
+    "chat_old": chat_old_history_to_prompt,                  
 }
 
 from transformers import LlamaTokenizer
@@ -61,7 +61,7 @@ class llama2_text_processor:
     def __call__(self, caption, prompt=""):
         if '<EOI>' not in prompt:
             prompt = self.replace_tags_with_empty(prompt)
-            # caption = self.replace_tags_with_empty(caption)
+                                                             
             history = []
             prompt = self.history_to_prompt(prompt, history)
 
@@ -187,7 +187,7 @@ class llama2_text_processor_inference:
     def __call__(self, prompt=""):
         if '<EOI>' not in prompt:
             prompt = self.replace_tags_with_empty(prompt)
-            # caption = self.replace_tags_with_empty(caption)
+                                                             
             history = []
             prompt = self.history_to_prompt(prompt, history)
 

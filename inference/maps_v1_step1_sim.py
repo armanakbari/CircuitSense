@@ -37,7 +37,7 @@ def run_process_sim_with_timeout(func, args, timeout):
         }
     
     if not queue.empty():
-        return queue.get()  # 获取返回值
+        return queue.get()         
     else:
         return {
             'sim_ret': {'error': 'Function did not return anything'},
@@ -52,17 +52,17 @@ def preprocess_spice(spice_code):
     if  not spice_code.startswith('.title'):
         spice_code = '.title ' + spice_code
 
-    # add component id
+                      
     comp_num_map = {k: set() for k in SPICE_TYPES}
     for line in spice_code.split('\n'):
         try:
             comp_type = line.split()[0]
             assert comp_type[0] in SPICE_TYPES
         except Exception as e:
-            # print(f"Error: {e} when processing line: {line}")
-            # new_spice_code += line + '\n'  
+                                                               
+                                             
             continue
-        if len(comp_type) > 1: # add occupied component id
+        if len(comp_type) > 1:                            
             _type, _id = comp_type[0], comp_type[1:]
             print(f"Add occupied component: {_type}, {_id}")
             comp_num_map[_type].add(str(_id))
@@ -77,20 +77,20 @@ def preprocess_spice(spice_code):
             print(f"skip line: {line}")
             new_spice_code += line + '\n'
             continue
-        if len(comp_type) == 1: # No component id
+        if len(comp_type) == 1:                  
             print(f"process line: {line}, cnt: {cnt}, map: {comp_num_map}")
             if comp_type not in cnt.keys():
                 cnt[comp_type] = 1
 
             while str(cnt[comp_type]) in comp_num_map[comp_type]:
-                cnt[comp_type] += 1 # find a new component id
+                cnt[comp_type] += 1                          
 
             line = comp_type + str(cnt[comp_type]) + ' ' + line[1:]
             comp_num_map[comp_type].add(str(cnt[comp_type]))
             print("update map: ", comp_num_map)
         new_spice_code += line + '\n'
 
-    # deal with the old version of control card in spice code
+                                                             
     new_spice_code = new_spice_code.replace('.OP', '.control\nop\n').replace('.END', '.endc\n.end').replace('.PRINT DC', 'print').replace('V(0, ', '-v(').replace(', 0)', ')').replace('V(0 ', '-v(').replace(' 0)', ')').replace(' * ', ' ; ')
 
     print(f"Preprocessed Spice Code: {new_spice_code}")
@@ -105,8 +105,8 @@ def process_single_simulation(qid, spice_code, queue):
     print(f"Preprocessed Spice Code: {spice_code}\n")
     
     qid = qid.replace(' ', '_').replace('(', '_').replace(')', '_')
-    # try:
-        # circuit, sim_ret = spice_to_pyspice(spice_code, require_simulation=True)
+          
+                                                                                  
     with open(f'./{qid}.sp', 'w') as f:
         f.write(spice_code)
     assert not os.path.exists('output.txt'), "output.txt already exists"
@@ -128,10 +128,10 @@ def process_single_simulation(qid, spice_code, queue):
         sim_ret = json.load(f)
 
     print('\n\n' + '## Successfully Run Simulation !! ##' + '\n\n')
-    # except Exception as e:
-        # print(f"Error: {e} when simulating")
-        # sim_ret = {'error:': f'Error when simulating --> {e}'}
-        # os.system(f'rm {qid}.sp {qid}_ret.json output.txt')
+                            
+                                              
+                                                                
+                                                             
 
     os.system(f'rm {qid}.sp {qid}_ret.json output.txt')
     assert not os.path.exists(f'{qid}.sp'), f"File {qid}.sp still exists"
@@ -173,7 +173,7 @@ def main():
 
     data = process_data(data)
 
-    ## NOTE: below is the version of single simulation
+                                                      
     timeout = 5
 
     results = []
@@ -185,7 +185,7 @@ def main():
         print(f">>Running simulation for {item['id']}\n SPIECE: {item['spice']}")
         ret_sim = run_process_sim_with_timeout(func=process_single_simulation, args=(item['id'], item['spice'],), timeout=timeout)
         print(f">>Simulation results: {ret_sim}\n\n\n\n\n\n\n\n")
-        # exit()
+                
         print('\n\n' + '-'*50)
 
         time.sleep(1.)
@@ -195,7 +195,7 @@ def main():
     
     print("All tasks completed or timed out.")
 
-    # print(results[0].keys())
+                              
 
     print(f"Saving results to {save_path}")
     with open(save_path, 'a+', encoding='utf-8') as f:
@@ -204,7 +204,7 @@ def main():
                 f.write(json.dumps(item, ensure_ascii=False) + '\n')
             except Exception as e:
                 print(f"Error: {e} when writing to file\nitem: {item}")
-        # json.dump(results, f, indent=4)
+                                         
 
 def debug_preprocess():
     spice_code = """
@@ -228,4 +228,4 @@ print v(1,0)
 
 if __name__ == '__main__':
     main()
-    # debug_preprocess()
+                        

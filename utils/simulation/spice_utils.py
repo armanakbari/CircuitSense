@@ -8,7 +8,7 @@ from PySpice.Spice.NgSpice.Shared import NgSpiceShared
 
 ngspice = NgSpiceShared.new_instance() 
 
-# Using PySpice to load circuit from spice file
+                                               
 from PySpice.Spice.Netlist import Circuit
 from PySpice.Unit import *
 
@@ -47,30 +47,30 @@ def check_circuit_valid(spice_code: str) -> bool:
     print(G.degree())
     print(G.edges())
 
-    # Check for parallel voltage sources
+                                        
     for n1, n2 in G.edges():
         if sum(G[n1][n2][i]['voltage'] for i in G[n1][n2]) > 1:
             print("More than one voltage source in parallel")
             return False
 
-    # G is your graph
+                     
     nodes_with_degree_one_current = [node for node, degree in G.degree() if degree == 1 and any(G[node][nbr][0]['current'] for nbr in G[node])]
     if len(nodes_with_degree_one_current) > 0:
         print(f"Degree one current source, node: {nodes_with_degree_one_current}")
         return False
 
-    # TODO: Check for series current sources using 
+                                                   
     pass
-    # for cycle in nx.simple_cycles(G):
-    #     print(f"Cycle: {cycle}")
-    #     cycle = cycle + [cycle[0]]
-    #     current_sources = 0
-    #     for i in range(len(cycle) - 1):
-    #         current_sources += sum(G[cycle[i]][cycle[i + 1]][j]['current'] for j in G[cycle[i]][cycle[i + 1]])
-    #     if current_sources > 1:
-    #         print("More than one current source in series")
-    #         return False
-    # exit()
+                                       
+                                  
+                                    
+                             
+                                         
+                                                                                                                
+                                 
+                                                             
+                          
+            
 
     return True
 
@@ -108,7 +108,7 @@ def get_components_stat_from_spice(spice_code):
         try:
             comp, n1, n2, val = line.split()
             if comp.startswith('VI'):
-                # comp = comp[2:]
+                                 
                 continue
             comp = comp[0]
             comps.append((comp, val))
@@ -134,16 +134,16 @@ def get_nodes_voltage(spice_code):
         print('Loaded circuit:')
         print(circuit)
 
-        # Run simulation and get result
+                                       
         simulator = circuit.simulator(temperature=25, nominal_temperature=25)
         print(f"Start simulation...")
         analysis = simulator.operating_point()
         print(f"Simulation done!")
-        # print(f'Analysis: \n\tnodes: {analysis.nodes} \n\tbranches: {analysis.branches}')
+                                                                                           
 
-        # current = analysis['R1'].dc_value
-        # voltage = analysis['R1'].dc_voltage
-        # print(f"current: {current}A, voltage: {voltage}V")
+                                           
+                                             
+                                                            
         
         node_values = []
         for node_name, node_value in analysis.nodes.items():
@@ -151,7 +151,7 @@ def get_nodes_voltage(spice_code):
             print(f'Node {node_name}: { node_value:.2f}V')
             node_values.append(node_value)
 
-        # node_values = np.unique(node_values)
+                                              
         node_values = np.array(node_values)
         node_values = np.sort(node_values) - np.min(node_values)
 
@@ -270,7 +270,7 @@ def debug_get_components_stat_from_spice():
     print(get_components_stat_from_spice(test_spice_sim))
 
 if __name__ == "__main__":
-    # main()
-    # debug(test_spice)
-    # debug(test_spice_sim)
+            
+                       
+                           
     debug_get_components_stat_from_spice()

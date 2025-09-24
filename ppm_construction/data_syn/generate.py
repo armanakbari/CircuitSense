@@ -29,7 +29,7 @@ def parse_args():
     return args
 
 def threading_task(task_id, seed, note, gen_num, save_path, symbolic=False, simple_circuits=False, integrator=False, no_meas=False):
-    # seed=42
+             
     np.random.seed(seed)
     random.seed(seed)
     cnt = 0
@@ -47,13 +47,13 @@ def threading_task(task_id, seed, note, gen_num, save_path, symbolic=False, simp
                 break
 
         print(f"Generating Latex code {id}...")
-        # latex_code = circ.to_latex()
+                                      
         print("\n\n```latex")
         print(latex_code)
         print("```\n\n")
 
         assert circ is not None and circ.valid
-        # if circ and circ.valid:
+                                 
         with open(save_path.replace(".json", ".txt"), "a+", encoding='utf-8') as file:
             print(f"{id} valid, Saving {id}...", file)
         stat_info = {
@@ -122,7 +122,7 @@ def main(args):
 def stat(args):
     save_path = args.save_path
     
-    # Check if file exists and has content
+                                          
     if not os.path.exists(save_path):
         print("No data file found, skipping statistics")
         return

@@ -12,7 +12,7 @@ import httpx
 import base64
 import PIL
 
-# Replace with your actual API key
+                                  
 client = None
 proxy_url = "http://127.0.0.1:7890"
 httpx_client = httpx.Client(proxies={"http://": proxy_url, "https://": proxy_url})
@@ -55,12 +55,12 @@ class OpenAIImage2TextAPIClient(Image2TextAPIClient):
                 })
         image_data = encode_image(image_path)
         if image_data:
-            # content.append(
-            #     {
-            #         "type": "text",
-            #         "text": "图{}".format(id),
-            #     }
-            # )
+                             
+                   
+                                     
+                                               
+                   
+               
             content.append(
                 {
                     "type": "image_url",
@@ -80,7 +80,7 @@ class OpenAIImage2TextAPIClient(Image2TextAPIClient):
         ],
         )
         print(messages)
-        # response = messages.choices[0].message.content
+                                                        
         return messages
     
     def parse(self, response):
@@ -99,12 +99,12 @@ class O1Image2TextAPIClient(OpenAIImage2TextAPIClient):
                 })
         image_data = encode_image(image_path)
         if image_data:
-            # content.append(
-            #     {
-            #         "type": "text",
-            #         "text": "图{}".format(id),
-            #     }
-            # )
+                             
+                   
+                                     
+                                               
+                   
+               
             content.append(
                 {
                     "type": "image_url",
@@ -124,7 +124,7 @@ class O1Image2TextAPIClient(OpenAIImage2TextAPIClient):
         ],
         )
         print(messages)
-        # response = messages.choices[0].message.content
+                                                        
         return messages
     def parse(self, response):
         return super().parse(response)
@@ -155,12 +155,12 @@ class AnthropicImage2TextAPIClient(Image2TextAPIClient):
                 raise ValueError("Unsupported image format")
         
         if image_data:
-            # content.append(
-            #     {
-            #         "type": "text",
-            #         "text": "图{}".format(id),
-            #     }
-            # )
+                             
+                   
+                                     
+                                               
+                   
+               
             content.append(
                 {
                     "type": "image",
@@ -183,7 +183,7 @@ class AnthropicImage2TextAPIClient(Image2TextAPIClient):
         )
 
         print(messages)
-        # response = messages.choices[0].message.content
+                                                        
         return messages
     
     def parse(self, response):
@@ -201,7 +201,7 @@ class GoogleImage2TextAPIClient(Image2TextAPIClient):
     def request(self, user_prompt, image_path=None):
         if image_path:
             sample_file = PIL.Image.open(image_path)
-        # Prompt the model with text and the previously uploaded image.
+                                                                       
             response = self.client.generate_content([sample_file, user_prompt]) 
         else:
             response = self.client.generate_content([user_prompt])
@@ -242,7 +242,7 @@ class ZhipuAIImage2TextAPIClient(Image2TextAPIClient):
             ],
             )
         else:
-            # raise ValueError("Unsupported image format")
+                                                          
             messages = self.client.chat.completions.create(
                 model=self.model_name,
                 max_tokens=max_tokens,

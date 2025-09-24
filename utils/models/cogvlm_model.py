@@ -124,8 +124,8 @@ class FineTuneTrainCogVLMModel(CogVLMModel):
     def __init__(self, args, transformer=None, parallel_output=True, **kw_args):
         super().__init__(args, transformer=transformer, parallel_output=parallel_output, **kw_args)
         self.args = args
-        # If you want to use model parallel with a mp_size=1 checkpoint, and meanwhile you also want to use lora,
-        # you have to add_mixin after loading model checkpoint.
+                                                                                                                 
+                                                               
         
     @classmethod
     def add_model_specific_args(cls, parser):

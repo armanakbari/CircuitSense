@@ -16,7 +16,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from convert_netlist_remove_n_nodes import convert_netlist_remove_n_nodes
 
 def _multiprocessing_target(queue, func_data):
-    """Top-level target function for multiprocessing (must be pickleable)"""
+                                                                            
     try:
         func, args = func_data
         result = func(*args)
@@ -25,7 +25,7 @@ def _multiprocessing_target(queue, func_data):
         queue.put(('error', str(e)))
 
 def run_with_timeout(func, args, timeout_seconds):
-    """Run function with multiprocessing timeout - can kill stuck processes"""
+                                                                              
     queue = multiprocessing.Queue()
     func_data = (func, args)
     process = multiprocessing.Process(target=_multiprocessing_target, args=(queue, func_data))
@@ -33,7 +33,7 @@ def run_with_timeout(func, args, timeout_seconds):
     process.join(timeout=timeout_seconds)
     
     if process.is_alive():
-        # Force kill the stuck process
+                                      
         process.terminate()
         process.join()
         return None, f"Timeout after {timeout_seconds}s"
@@ -48,7 +48,7 @@ def run_with_timeout(func, args, timeout_seconds):
         return None, result
 
 def safe_computation_mp(func, args, timeout_seconds=30, description="computation"):
-    """Safely execute a function with multiprocessing timeout"""
+                                                                
     print(f"🔧 Starting {description} (timeout: {timeout_seconds}s)...")
     start_time = time.time()
     
@@ -66,36 +66,36 @@ def safe_computation_mp(func, args, timeout_seconds=30, description="computation
         return result
 
 def limit_ad_to_infinity_str(expr_str):
-    """If the string expression contains 'Ad', take symbolic limit as Ad -> oo.
-
-    Returns the simplified string if successful; otherwise returns the original string.
-    """
+\
+\
+\
+       
     try:
         if expr_str is None or ('Ad' not in str(expr_str)):
             return expr_str
 
-        # Define symbols for parser; unknown names will become Symbols automatically
+                                                                                    
         Ad = sp.symbols('Ad', positive=True)
-        s_sym = sp.symbols('s')  # Laplace variable
+        s_sym = sp.symbols('s')                    
 
-        # Sympify; provide 's' mapping to avoid confusion with lcapy.s object
+                                                                             
         expr = sp.sympify(str(expr_str), locals={'s': s_sym, 'Ad': Ad})
         limited = sp.limit(expr, Ad, sp.oo)
         simplified = sp.simplify(limited)
         return str(simplified)
     except Exception:
-        # Fall back to original if parsing/limit fails
+                                                      
         return expr_str
 
 def _compute_transfer_function(circuit, vs_nodes, comp):
-    """Top-level function for transfer function computation (must be pickleable)"""
+                                                                                   
     tf = str(circuit.transfer(vs_nodes, comp))
     return limit_ad_to_infinity_str(tf)
 
 def _compute_mna_analysis(circuit, domain='t'):
-    """Top-level function for MNA computation (must be pickleable)"""
+                                                                     
     try:
-        # Use laplace domain for s-domain analysis, time domain for t-domain
+                                                                            
         print(f"Creating {domain}-domain circuit for MNA...")
         if domain == 's':
             circuit_domain = circuit.laplace()
@@ -103,11 +103,11 @@ def _compute_mna_analysis(circuit, domain='t'):
             circuit_domain = circuit
             
         print(f"Creating MNA object...")
-        # Create MNA object with scipy solver (as shown in working example)
+                                                                           
         try:
             mna_obj = mna.MNA(circuit_domain, solver_method='scipy')
         except Exception as mna_creation_error:
-            # Try alternative solver methods if scipy fails
+                                                           
             print(f"scipy solver failed, trying alternative methods...")
             try:
                 mna_obj = mna.MNA(circuit_domain, solver_method='numpy')
@@ -118,7 +118,7 @@ def _compute_mna_analysis(circuit, domain='t'):
                     return f"MNA Creation Error: Failed with all solver methods. Original: {str(mna_creation_error)}, Final: {str(final_error)}"
         
         print(f"Getting matrix equations...")
-        # Get matrix equations
+                              
         matrix_eqs = mna_obj.matrix_equations()
         
         if matrix_eqs is None:
@@ -126,8 +126,8 @@ def _compute_mna_analysis(circuit, domain='t'):
             
         print(f"Converting to readable form...")
         
-        # First, let's try to just return the basic matrix representation to debug
-        # This should work similar to the user's example: print(na.matrix_equations())
+                                                                                  
+                                                                                      
         try:
             basic_repr = str(matrix_eqs)
         except Exception as basic_error:
@@ -141,7 +141,7 @@ def _compute_mna_analysis(circuit, domain='t'):
         return f"MNA Error: {str(e)}\nDetails:\n{error_details}"
 
 def debug_mna_object(netlist_string):
-    """Debug function to inspect MNA object structure"""
+                                                        
     try:
         print("=== DEBUG MNA OBJECT ===")
         circuit = Circuit(netlist_string)
@@ -186,12 +186,12 @@ def debug_mna_object(netlist_string):
         return None, None
 
 def _convert_matrix_to_readable(matrix_eqs, mna_obj):
-    """Convert matrix equations to human-readable form"""
+                                                         
     try:
-        # Try to get unknowns from different possible attributes/methods
+                                                                        
         unknowns = None
         
-        # Try various ways to get the unknowns
+                                              
         if hasattr(mna_obj, 'unknowns'):
             unknowns = mna_obj.unknowns
         elif hasattr(mna_obj, 'x'):
@@ -201,44 +201,44 @@ def _convert_matrix_to_readable(matrix_eqs, mna_obj):
         elif hasattr(mna_obj, '_unknowns'):
             unknowns = mna_obj._unknowns
         else:
-            # Try to extract from matrix_equations itself
+                                                         
             if hasattr(matrix_eqs, 'lhs') and hasattr(matrix_eqs.lhs, 'free_symbols'):
                 unknowns = list(matrix_eqs.lhs.free_symbols)
             elif hasattr(matrix_eqs, 'args') and len(matrix_eqs.args) >= 2:
-                # matrix_eqs might be in form Eq(unknowns_vector, solution)
+                                                                           
                 unknowns_vec = matrix_eqs.args[0]
                 if hasattr(unknowns_vec, '__iter__'):
                     unknowns = list(unknowns_vec)
         
-        # If we still don't have unknowns, create generic ones
+                                                              
         if unknowns is None:
-            # Get dimensions from the matrix
+                                            
             try:
                 n_vars = matrix_eqs.A.cols if hasattr(matrix_eqs, 'A') else len(str(matrix_eqs).split(','))
                 unknowns = [f"x{i}" for i in range(n_vars)]
             except:
                 return f"Could not determine unknowns and matrix structure.\nMatrix form:\n{str(matrix_eqs)}"
         
-        # Get A matrix and b vector from Ax = b form
+                                                    
         if hasattr(matrix_eqs, 'A') and hasattr(matrix_eqs, 'b'):
             A_matrix = matrix_eqs.A
             b_vector = matrix_eqs.b
         else:
-            # Try to parse the equation structure
+                                                 
             return f"Matrix structure not in expected A*x = b format.\nMatrix form:\n{str(matrix_eqs)}"
         
         equations = []
         
-        # For each row, create a human-readable equation
+                                                        
         for i in range(A_matrix.rows):
             lhs_terms = []
             
-            # Build left-hand side terms
+                                        
             for j in range(min(A_matrix.cols, len(unknowns))):
                 try:
                     coeff = A_matrix[i, j]
                     
-                    # Handle different coefficient types
+                                                        
                     if hasattr(coeff, 'is_zero') and coeff.is_zero:
                         continue
                     if str(coeff) == '0' or coeff == 0:
@@ -247,40 +247,40 @@ def _convert_matrix_to_readable(matrix_eqs, mna_obj):
                     unknown = str(unknowns[j])
                     coeff_str = str(coeff)
                     
-                    # Simplify coefficient representation
+                                                         
                     if coeff_str == '1':
                         lhs_terms.append(f"{unknown}")
                     elif coeff_str == '-1':
                         lhs_terms.append(f"-{unknown}")
                     else:
-                        # Wrap complex coefficients in parentheses
+                                                                  
                         if any(op in coeff_str for op in ['+', '-', '*', '/', '^', 's']):
                             lhs_terms.append(f"({coeff_str})*{unknown}")
                         else:
                             lhs_terms.append(f"{coeff_str}*{unknown}")
                             
                 except Exception as coeff_error:
-                    # Skip problematic coefficients
+                                                   
                     print(f"Warning: Skipping coefficient at [{i},{j}]: {coeff_error}")
                     continue
             
-            # Build right-hand side
+                                   
             try:
                 rhs = str(b_vector[i])
-                # Simplify RHS representation
+                                             
                 if rhs == '0':
                     rhs = '0'
             except Exception as rhs_error:
                 rhs = f"<RHS_ERROR: {rhs_error}>"
             
-            # Combine into equation
+                                   
             if lhs_terms:
                 lhs = " + ".join(lhs_terms).replace("+ -", "- ")
-                # Clean up any double operators
+                                               
                 lhs = lhs.replace("- -", "+ ").replace("+ +", "+ ")
                 equation = f"{lhs} = {rhs}"
                 equations.append(equation)
-            elif rhs != '0':  # Include equations with only RHS
+            elif rhs != '0':                                   
                 equations.append(f"0 = {rhs}")
         
         if equations:
@@ -289,9 +289,9 @@ def _convert_matrix_to_readable(matrix_eqs, mna_obj):
             return f"Matrix form (no readable equations generated):\n{str(matrix_eqs)}"
         
     except Exception as e:
-        # Enhanced fallback with more information
+                                                 
         try:
-            # Debug info about the MNA object
+                                             
             mna_attrs = [attr for attr in dir(mna_obj) if not attr.startswith('_')]
             matrix_attrs = [attr for attr in dir(matrix_eqs) if not attr.startswith('_')]
             
@@ -306,23 +306,23 @@ def _convert_matrix_to_readable(matrix_eqs, mna_obj):
             return f"Conversion Error: {str(e)}\nMatrix form:\n{str(matrix_eqs)}"
 
 def clean_netlist_for_lcapy(spice_netlist):
-    """
-    Clean SPICE netlist for lcapy compatibility.
-    
-    This function is enhanced to work better with ordinary netlists
-    (without N-nodes) that have been converted by our converter.
-    """
+\
+\
+\
+\
+\
+       
     lines = []
     skip_control_block = False
     
     for line in spice_netlist.strip().split('\n'):
         line = line.strip()
         
-        # Skip empty lines and comments
+                                       
         if not line or line.startswith('*'):
             continue
             
-        # Skip control blocks
+                             
         if line.startswith('.control'):
             skip_control_block = True
             continue
@@ -332,11 +332,11 @@ def clean_netlist_for_lcapy(spice_netlist):
         if skip_control_block:
             continue
             
-        # Skip SPICE directives
+                               
         if line.startswith('.') or line.startswith('print') or ';' in line:
             continue
             
-        # Skip AC/DC analysis commands
+                                      
         if line.startswith(('ac ', 'dc ', 'tran ', 'op')):
             continue
         
@@ -346,35 +346,35 @@ def clean_netlist_for_lcapy(spice_netlist):
             
         component = parts[0]
         
-        # Must start with a valid component identifier
+                                                      
         if not component[0].upper() in ['R', 'L', 'C', 'V', 'I', 'E', 'F', 'G', 'H']:
             continue
         
-        # Preserve dependent source symbolic gains (x_k) if present
+                                                                   
         def preserve_symbol(value):
             if value == '<Empty>':
                 return '1'
-            # keep symbolic x_<n> tokens
+                                        
             if re.match(r'^x_\d+$', value):
                 return value
             return value
         
-        # Handle dependent sources and op-amps (E, F, G, H components)
+                                                                      
         if component.upper().startswith('E'):
-            # VCVS (E): Ename Np Nm Ncp Ncm gain [ac_gain]
-            if len(parts) >= 6:  # At least 6 parameters needed
+                                                          
+            if len(parts) >= 6:                                
                 output_p, output_n = parts[1], parts[2]
                 input_p, input_n = parts[3], parts[4]
                 gain = parts[5]
                 ac_gain = parts[6] if len(parts) > 6 else "0"
                 
-                # Clean node names (but they should already be clean in converted netlists)
+                                                                                           
                 output_p = re.sub(r'[^\w]', '_', output_p)
                 output_n = re.sub(r'[^\w]', '_', output_n)
                 input_p = re.sub(r'[^\w]', '_', input_p)
                 input_n = re.sub(r'[^\w]', '_', input_n)
                 
-                # Preserve symbolic gains
+                                         
                 gain = preserve_symbol(gain)
                 if ac_gain == '<Empty>':
                     ac_gain = "0"
@@ -383,13 +383,13 @@ def clean_netlist_for_lcapy(spice_netlist):
             else:
                 continue
         elif component.upper().startswith('G'):
-            # VCCS (G): Gname Np Nm Ncp Ncm [value]
-            if len(parts) >= 5:  # At least 5 parameters needed
+                                                   
+            if len(parts) >= 5:                                
                 output_p, output_n = parts[1], parts[2]
                 input_p, input_n = parts[3], parts[4]
                 value = parts[5] if len(parts) > 5 else "1"
                 
-                # Clean node names
+                                  
                 output_p = re.sub(r'[^\w]', '_', output_p)
                 output_n = re.sub(r'[^\w]', '_', output_n)
                 input_p = re.sub(r'[^\w]', '_', input_p)
@@ -401,13 +401,13 @@ def clean_netlist_for_lcapy(spice_netlist):
             else:
                 continue
         elif component.upper().startswith('F'):
-            # CCCS (F): Fname Np Nm Vcontrol [value]
+                                                    
             if len(parts) >= 4:
                 output_p, output_n = parts[1], parts[2]
                 vcontrol = parts[3]
                 value = parts[4] if len(parts) > 4 else "1"
                 
-                # Clean node names
+                                  
                 output_p = re.sub(r'[^\w]', '_', output_p)
                 output_n = re.sub(r'[^\w]', '_', output_n)
                 vcontrol = re.sub(r'[^\w]', '_', vcontrol)
@@ -418,13 +418,13 @@ def clean_netlist_for_lcapy(spice_netlist):
             else:
                 continue
         elif component.upper().startswith('H'):
-            # CCVS (H): Hname Np Nm Vcontrol [value]
+                                                    
             if len(parts) >= 4:
                 output_p, output_n = parts[1], parts[2]
                 vcontrol = parts[3]
                 value = parts[4] if len(parts) > 4 else "1"
                 
-                # Clean node names
+                                  
                 output_p = re.sub(r'[^\w]', '_', output_p)
                 output_n = re.sub(r'[^\w]', '_', output_n)
                 vcontrol = re.sub(r'[^\w]', '_', vcontrol)
@@ -435,24 +435,24 @@ def clean_netlist_for_lcapy(spice_netlist):
             else:
                 continue
         else:
-            # Handle regular components (R, L, C, V, I)
+                                                       
             node1, node2 = parts[1], parts[2]
             value = parts[3]
             
-            # Clean node names (should already be clean in converted netlists)
+                                                                              
             node1 = re.sub(r'[^\w]', '_', node1)
             node2 = re.sub(r'[^\w]', '_', node2)
             
-            # Skip measurement voltage sources that shouldn't exist in converted netlists
+                                                                                         
             if component.startswith('V_meas') or component.startswith('VI'):
                 print(f"⚠️ Warning: Found measurement component {component} in supposedly converted netlist")
                 continue
             
-            # Handle empty values
+                                 
             if value == '<Empty>':
                 value = component
             
-            # Preserve DC/AC parameter lists for voltage sources (case-insensitive)
+                                                                                   
             if component.upper().startswith('V') and value.lower() in ['dc', 'ac']:
                 tail = ' '.join(parts[3:])
                 lines.append(f"{component} {node1} {node2} {tail}")
@@ -477,17 +477,17 @@ def find_components(circuit):
     return components
 
 def load_circuit_data(data_source, use_converted_netlists=True):
-    """
-    Load circuit data from various sources and optionally convert N-nodes.
-    
-    Args:
-        data_source: Path to JSON file or data structure
-        use_converted_netlists: If True, convert N-nodes to ordinary netlists
-        
-    Returns:
-        Dictionary of {circuit_id: netlist}
-    """
-    # Load the data
+\
+\
+\
+\
+\
+\
+\
+\
+\
+       
+                   
     if isinstance(data_source, (str, Path)):
         data_path = Path(data_source)
         if not data_path.exists():
@@ -500,24 +500,24 @@ def load_circuit_data(data_source, use_converted_netlists=True):
     
     circuits = {}
     
-    # Handle different JSON structures
+                                      
     if 'results' in data:
-        # Structure from symbolic_equations.json
+                                                
         results = data['results']
         for result in results:
             circuit_id = result.get('circuit_id')
             
             if use_converted_netlists and 'cleaned_netlist' in result:
-                # Use the already converted netlist
+                                                   
                 netlist = result['cleaned_netlist']
                 print(f"✅ Using converted netlist for {circuit_id}")
             elif 'original_netlist_with_measurements' in result:
-                # Convert on-the-fly
+                                    
                 original = result['original_netlist_with_measurements']
                 netlist = convert_netlist_remove_n_nodes(original)
                 print(f"🔄 Converting netlist for {circuit_id}")
             elif 'cleaned_netlist' in result:
-                # Fallback to cleaned netlist and try conversion
+                                                                
                 original = result['cleaned_netlist']
                 if 'N' in original and ('V_meas' in original or 'VI' in original):
                     netlist = convert_netlist_remove_n_nodes(original)
@@ -533,10 +533,10 @@ def load_circuit_data(data_source, use_converted_netlists=True):
                 circuits[circuit_id] = netlist
                 
     elif isinstance(data, dict):
-        # Structure from labels.json (circuit_id: netlist)
+                                                          
         for circuit_id, netlist in data.items():
             if use_converted_netlists:
-                # Check if conversion is needed
+                                               
                 if 'N' in netlist and ('V_meas' in netlist or 'VI' in netlist):
                     netlist = convert_netlist_remove_n_nodes(netlist)
                     print(f"🔄 Converting netlist for {circuit_id}")
@@ -551,7 +551,7 @@ def load_circuit_data(data_source, use_converted_netlists=True):
 
 def analyze_circuit(netlist, circuit_id):
     try:
-        # The netlist should already be converted, but clean it for lcapy
+                                                                         
         cleaned = clean_netlist_for_lcapy(netlist)
         print(f"\nCircuit {circuit_id}:")
         print(f"Cleaned netlist:\n{cleaned}")
@@ -560,24 +560,24 @@ def analyze_circuit(netlist, circuit_id):
             print("No components after cleaning")
             return {'circuit_id': circuit_id, 'error': 'No components after cleaning netlist'}
             
-        # Enhanced circuit complexity checking
+                                              
         lines = [line for line in cleaned.split('\n') if line.strip()]
         num_components = len(lines)
         
-        # Count different component types for complexity assessment
+                                                                   
         num_capacitors = len([line for line in lines if line.startswith('C')])
         num_inductors = len([line for line in lines if line.startswith('L')])
         num_opamps = len([line for line in lines if line.startswith('E')])
         num_nodes = len(set(node for line in lines for node in line.split()[1:3] if node != '0'))
         
-        # Calculate complexity score
+                                    
         complexity_score = num_components + num_capacitors * 2 + num_inductors * 2 + num_opamps * 3
         matrix_size_estimate = num_nodes
         
         print(f"Circuit complexity: {num_components} components, {num_nodes} nodes, score: {complexity_score}")
         print(f"Estimated matrix size: {matrix_size_estimate}×{matrix_size_estimate}")
         
-        # More permissive thresholds - only skip extremely complex circuits
+                                                                           
         if num_components > 20 or complexity_score > 40 or matrix_size_estimate > 12:
             print(f"Circuit too complex for symbolic analysis, skipping")
             return {
@@ -639,7 +639,7 @@ def analyze_circuit(netlist, circuit_id):
         
         vs_name, vs_nodes = voltage_sources[0]
         
-        # More generous timeouts based on circuit complexity
+                                                            
         if complexity_score <= 15:
             timeout_tf = 30
             timeout_nodal = 40
@@ -655,8 +655,8 @@ def analyze_circuit(netlist, circuit_id):
         
         print(f"Using generous timeouts: TF={timeout_tf}s, MNA={timeout_nodal}s")
         
-        # Try at least one transfer function for testing
-        max_transfer_functions = min(1, len(components))  # Start with just 1 to test
+                                                        
+        max_transfer_functions = min(1, len(components))                             
         for i, comp in enumerate(components[:max_transfer_functions]):
             print(f"Analyzing transfer function {i+1}/{max_transfer_functions}: {vs_name} -> {comp}")
             tf_result = safe_computation_mp(
@@ -672,7 +672,7 @@ def analyze_circuit(netlist, circuit_id):
                 result['transfer_functions'][f"{vs_name}_to_{comp}"] = "TIMEOUT_OR_ERROR"
                 print(f"Transfer function timed out or failed")
         
-        # Only try MNA analysis if we got at least one transfer function
+                                                                        
         if any(v != "TIMEOUT_OR_ERROR" for v in result['transfer_functions'].values()):
             print(f"Attempting T-domain MNA equations...")
             mna_t = safe_computation_mp(
@@ -688,7 +688,7 @@ def analyze_circuit(netlist, circuit_id):
                 result['nodal_equations']['t_domain'] = "TIMEOUT_OR_ERROR"
                 print(f"T-domain MNA equations timed out or failed")
                 
-            # Also try S-domain MNA analysis
+                                            
             print(f"Attempting S-domain MNA equations...")
             mna_s = safe_computation_mp(
                 _compute_mna_analysis,
@@ -716,8 +716,8 @@ def analyze_circuit(netlist, circuit_id):
         return {'circuit_id': circuit_id, 'error': f'Exception: {str(e)}'}
 
 def main():
-    # Use default multiprocessing method (fork on Linux, spawn on Windows)
-    # This avoids pickling issues with complex lcapy objects
+                                                                          
+                                                            
     pass
     
     parser = argparse.ArgumentParser(description="Analyze synthetic circuits using MNA with robust timeout handling")
@@ -734,7 +734,7 @@ def main():
                        help='Path to JSON file with converted netlists (e.g., symbolic_equations_no_n_nodes.json)')
     args = parser.parse_args()
     
-    # Determine which file to use
+                                 
     if args.converted_file:
         data_file = args.converted_file
         print(f"Using converted netlists from: {data_file}")
@@ -746,7 +746,7 @@ def main():
         print(f"File not found: {data_file}")
         return
     
-    # Load circuit data with optional conversion
+                                                
     try:
         circuits = load_circuit_data(data_file, use_converted_netlists=args.use_converted_netlists)
     except Exception as e:
@@ -768,7 +768,7 @@ def main():
     print(f"Using multiprocessing timeouts for robust analysis")
     print(f"Focus: Clean netlists should improve lcapy compatibility")
     
-    # Track detailed error types
+                                
     error_types = {}
     
     for i, (circuit_id, netlist) in enumerate(circuit_items, 1):
@@ -790,7 +790,7 @@ def main():
             results.append(result)
             error_msg = result['error']
             
-            # Track error types for debugging
+                                             
             error_key = error_msg.split(':')[0] if ':' in error_msg else error_msg[:50]
             error_types[error_key] = error_types.get(error_key, 0) + 1
             
@@ -799,12 +799,12 @@ def main():
             successful += 1
             results.append(result)
             
-            # Show complexity metrics and success details
+                                                         
             metrics = result.get('complexity_metrics', {})
             score = metrics.get('complexity_score', 0)
             nodes = metrics.get('num_nodes', 0)
             
-            # Count successful analyses
+                                       
             tf_success = sum(1 for v in result.get('transfer_functions', {}).values() 
                            if v not in ["TIMEOUT_OR_ERROR", "SKIPPED_TOO_COMPLEX", "SKIPPED_NO_TRANSFER_FUNCTIONS"])
             mna_success = sum(1 for v in result.get('nodal_equations', {}).values() 
@@ -812,14 +812,14 @@ def main():
             
             print(f"{circuit_id} - Success (complexity: {score}, nodes: {nodes}, TF: {tf_success}, MNA: {mna_success})")
             
-            # Show sample if requested
+                                      
             if args.show_samples and 'transfer_functions' in result:
                 for tf_name, tf_expr in result['transfer_functions'].items():
                     if tf_expr not in ["TIMEOUT_OR_ERROR", "SKIPPED_TOO_COMPLEX", "SKIPPED_NO_TRANSFER_FUNCTIONS"]:
                         print(f"  📈 Sample: {tf_name}: {tf_expr}")
                         break
     
-    # Calculate detailed statistics
+                                   
     timeout_count = sum(1 for r in results 
                        if any('TIMEOUT_OR_ERROR' in str(v) 
                              for v in r.get('transfer_functions', {}).values()) or
@@ -828,7 +828,7 @@ def main():
     
     skipped_complex = sum(1 for r in results if r.get('skipped', False))
     
-    # Complexity analysis
+                         
     if results:
         complexity_scores = [r.get('complexity_metrics', {}).get('complexity_score', 0) 
                            for r in results if 'complexity_metrics' in r]
@@ -841,7 +841,7 @@ def main():
     else:
         avg_complexity = max_complexity = min_complexity = 0
     
-    # Count actual equation successes
+                                     
     total_tf_success = sum(1 for r in results for v in r.get('transfer_functions', {}).values() 
                           if v not in ["TIMEOUT_OR_ERROR", "SKIPPED_TOO_COMPLEX", "SKIPPED_NO_TRANSFER_FUNCTIONS"])
     total_mna_success = sum(1 for r in results for v in r.get('nodal_equations', {}).values() 

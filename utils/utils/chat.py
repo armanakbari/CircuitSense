@@ -1,10 +1,10 @@
-# -*- encoding: utf-8 -*-
-'''
-@File    :   chat.py
-@Time    :   2023/05/08 19:10:08
-@Author  :   Ming Ding 
-@Contact :   dm18@mails.tsinghua.edu.cn
-'''
+                         
+\
+\
+\
+\
+\
+   
 
 from typing import Optional, Tuple, Union, List, Callable, Dict, Any
 import requests
@@ -80,9 +80,9 @@ def chat(image_path, model, text_processor, img_processor,
     )
     strategy = BaseStrategy(temperature=temperature, top_p=top_p, top_k=top_k, end_tokens=[text_processor.tokenizer.eos_token_id],
                             invalid_slices=invalid_slices, repetition_penalty=repetition_penalty)
-    # use beam search to get a better result
-    # strategy = BeamSearchStrategy(temperature=temperature, top_p=top_p, top_k=top_k, end_tokens=[text_processor.tokenizer.eos_token_id],
-    #                               num_beams=5, consider_end=True, repetition_penalty=repetition_penalty)
+                                            
+                                                                                                                                          
+                                                                                                          
     get_func = text_processor.get_func(input_ids, **inputs_dic) if hasattr(text_processor, 'get_func') else get_masks_and_position_ids_default
 
     img_inputs = {'vision_'+k: v for k, v in torch_image.items()}
@@ -127,18 +127,18 @@ def chat(image_path, model, text_processor, img_processor,
             get_masks_and_position_ids=get_func,
             strategy=strategy,
             **inputs
-        )[0] # drop memory
+        )[0]              
         
-        # ---------------
-        # port from inference_glm.py, more general than chat mode
-        # clip -1s and fill back generated things into seq
+                         
+                                                                 
+                                                          
         if type(output) is not list:
             output_list = output.tolist()
         else:
             output_list = output
 
         response = text_processor.tokenizer.decode(output_list[0])
-    # print('original:', response)
+                                  
     if hasattr(text_processor, 'process_response'):
         response = text_processor.process_response(response)
     response = response.split(text_processor.sep)[-1].strip()

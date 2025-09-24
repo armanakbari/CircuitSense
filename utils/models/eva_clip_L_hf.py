@@ -97,9 +97,9 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-# --------------------------------------------------------
-# Adapted from  https://github.com/microsoft/unilm/tree/master/beit
-# --------------------------------------------------------
+                                                          
+                                                                   
+                                                          
 import math
 import os
 from functools import partial
@@ -113,15 +113,15 @@ except:
     from timm.layers import drop_path, to_2tuple, trunc_normal_
     
 class PatchDropout(nn.Module):
-    """
-    https://arxiv.org/abs/2212.00794
-    """
+\
+\
+       
 
     def __init__(self, prob, exclude_first_token=True):
         super().__init__()
         assert 0 <= prob < 1.
         self.prob = prob
-        self.exclude_first_token = exclude_first_token  # exclude CLS token
+        self.exclude_first_token = exclude_first_token                     
         logging.info(f"os.getenv('RoPE')={os.getenv('RoPE')}")
 
     def forward(self, x):
@@ -166,8 +166,8 @@ else:
 import xformers.ops as xops
 
 class DropPath(nn.Module):
-    """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks).
-    """
+\
+       
     def __init__(self, drop_prob=None):
         super(DropPath, self).__init__()
         self.drop_prob = drop_prob
@@ -205,8 +205,8 @@ class Mlp(nn.Module):
     def forward(self, x):
         x = self.fc1(x)
         x = self.act(x)
-        # x = self.drop(x)
-        # commit this for the orignal BERT implement 
+                          
+                                                     
         x = self.ffn_ln(x)
 
         x = self.fc2(x)
@@ -269,22 +269,22 @@ class Attention(nn.Module):
             self.window_size = window_size
             self.num_relative_distance = (2 * window_size[0] - 1) * (2 * window_size[1] - 1) + 3
             self.relative_position_bias_table = nn.Parameter(
-                torch.zeros(self.num_relative_distance, num_heads))  # 2*Wh-1 * 2*Ww-1, nH
-            # cls to token & token 2 cls & cls to cls
+                torch.zeros(self.num_relative_distance, num_heads))                       
+                                                     
 
-            # get pair-wise relative position index for each token inside the window
+                                                                                    
             coords_h = torch.arange(window_size[0])
             coords_w = torch.arange(window_size[1])
-            coords = torch.stack(torch.meshgrid([coords_h, coords_w]))  # 2, Wh, Ww
-            coords_flatten = torch.flatten(coords, 1)  # 2, Wh*Ww
-            relative_coords = coords_flatten[:, :, None] - coords_flatten[:, None, :]  # 2, Wh*Ww, Wh*Ww
-            relative_coords = relative_coords.permute(1, 2, 0).contiguous()  # Wh*Ww, Wh*Ww, 2
-            relative_coords[:, :, 0] += window_size[0] - 1  # shift to start from 0
+            coords = torch.stack(torch.meshgrid([coords_h, coords_w]))             
+            coords_flatten = torch.flatten(coords, 1)            
+            relative_coords = coords_flatten[:, :, None] - coords_flatten[:, None, :]                   
+            relative_coords = relative_coords.permute(1, 2, 0).contiguous()                   
+            relative_coords[:, :, 0] += window_size[0] - 1                         
             relative_coords[:, :, 1] += window_size[1] - 1
             relative_coords[:, :, 0] *= 2 * window_size[1] - 1
             relative_position_index = \
                 torch.zeros(size=(window_size[0] * window_size[1] + 1, ) * 2, dtype=relative_coords.dtype)
-            relative_position_index[1:, 1:] = relative_coords.sum(-1)  # Wh*Ww, Wh*Ww
+            relative_position_index[1:, 1:] = relative_coords.sum(-1)                
             relative_position_index[0, 0:] = self.num_relative_distance - 3
             relative_position_index[0:, 0] = self.num_relative_distance - 2
             relative_position_index[0, 0] = self.num_relative_distance - 1
@@ -297,7 +297,7 @@ class Attention(nn.Module):
 
         self.attn_drop = nn.Dropout(attn_drop)
         self.inner_attn_ln = norm_layer(all_head_dim) if subln else nn.Identity()
-        # self.proj = nn.Linear(all_head_dim, all_head_dim)
+                                                           
         self.proj = nn.Linear(all_head_dim, dim)
         self.proj_drop = nn.Dropout(proj_drop)
         self.xattn = xattn
@@ -312,7 +312,7 @@ class Attention(nn.Module):
             k = F.linear(input=x, weight=self.k_proj.weight, bias=None)
             v = F.linear(input=x, weight=self.v_proj.weight, bias=self.v_bias)
 
-            q = q.reshape(B, N, self.num_heads, -1).permute(0, 2, 1, 3)     # B, num_heads, N, C
+            q = q.reshape(B, N, self.num_heads, -1).permute(0, 2, 1, 3)                         
             k = k.reshape(B, N, self.num_heads, -1).permute(0, 2, 1, 3)  
             v = v.reshape(B, N, self.num_heads, -1).permute(0, 2, 1, 3) 
         else: 
@@ -322,11 +322,11 @@ class Attention(nn.Module):
                 qkv_bias = torch.cat((self.q_bias, torch.zeros_like(self.v_bias, requires_grad=False), self.v_bias))
             
             qkv = F.linear(input=x, weight=self.qkv.weight, bias=qkv_bias)
-            qkv = qkv.reshape(B, N, 3, self.num_heads, -1).permute(2, 0, 3, 1, 4)   # 3, B, num_heads, N, C
+            qkv = qkv.reshape(B, N, 3, self.num_heads, -1).permute(2, 0, 3, 1, 4)                          
             q, k, v = qkv[0], qkv[1], qkv[2]
 
         if self.rope:
-            # slightly fast impl
+                                
             q_t = q[:, :, 1:, :]
             ro_q_t = self.rope(q_t)
             q = torch.cat((q[:, :, :1, :], ro_q_t), -2).type_as(v)
@@ -336,7 +336,7 @@ class Attention(nn.Module):
             k = torch.cat((k[:, :, :1, :], ro_k_t), -2).type_as(v)
 
         if self.xattn:
-            q = q.permute(0, 2, 1, 3)   # B, num_heads, N, C -> B, N, num_heads, C
+            q = q.permute(0, 2, 1, 3)                                             
             k = k.permute(0, 2, 1, 3)
             v = v.permute(0, 2, 1, 3)
 
@@ -357,8 +357,8 @@ class Attention(nn.Module):
                 relative_position_bias = \
                     self.relative_position_bias_table[self.relative_position_index.view(-1)].view(
                         self.window_size[0] * self.window_size[1] + 1,
-                        self.window_size[0] * self.window_size[1] + 1, -1)  # Wh*Ww,Wh*Ww,nH
-                relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()  # nH, Wh*Ww, Wh*Ww
+                        self.window_size[0] * self.window_size[1] + 1, -1)                  
+                relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()                    
                 attn = attn + relative_position_bias.unsqueeze(0).type_as(attn)
 
             if rel_pos_bias is not None:
@@ -390,7 +390,7 @@ class Block(nn.Module):
             dim, num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale,
             attn_drop=attn_drop, proj_drop=drop, window_size=window_size, attn_head_dim=attn_head_dim,
             xattn=xattn, rope=rope, subln=subln, norm_layer=norm_layer)
-        # NOTE: drop path for stochastic depth, we shall see if this is better than dropout here
+                                                                                                
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.norm2 = norm_layer(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
@@ -438,8 +438,8 @@ class Block(nn.Module):
 
 
 class PatchEmbed(nn.Module):
-    """ Image to Patch Embedding
-    """
+\
+       
     def __init__(self, img_size=224, patch_size=16, in_chans=3, embed_dim=768):
         super().__init__()
         img_size = to_2tuple(img_size)
@@ -454,7 +454,7 @@ class PatchEmbed(nn.Module):
 
     def forward(self, x, **kwargs):
         B, C, H, W = x.shape
-        # FIXME look at relaxing size constraints
+                                                 
         assert H == self.img_size[0] and W == self.img_size[1], \
             f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
         x = self.proj(x).flatten(2).transpose(1, 2)
@@ -468,22 +468,22 @@ class RelativePositionBias(nn.Module):
         self.window_size = window_size
         self.num_relative_distance = (2 * window_size[0] - 1) * (2 * window_size[1] - 1) + 3
         self.relative_position_bias_table = nn.Parameter(
-            torch.zeros(self.num_relative_distance, num_heads))  # 2*Wh-1 * 2*Ww-1, nH
-        # cls to token & token 2 cls & cls to cls
+            torch.zeros(self.num_relative_distance, num_heads))                       
+                                                 
 
-        # get pair-wise relative position index for each token inside the window
+                                                                                
         coords_h = torch.arange(window_size[0])
         coords_w = torch.arange(window_size[1])
-        coords = torch.stack(torch.meshgrid([coords_h, coords_w]))  # 2, Wh, Ww
-        coords_flatten = torch.flatten(coords, 1)  # 2, Wh*Ww
-        relative_coords = coords_flatten[:, :, None] - coords_flatten[:, None, :]  # 2, Wh*Ww, Wh*Ww
-        relative_coords = relative_coords.permute(1, 2, 0).contiguous()  # Wh*Ww, Wh*Ww, 2
-        relative_coords[:, :, 0] += window_size[0] - 1  # shift to start from 0
+        coords = torch.stack(torch.meshgrid([coords_h, coords_w]))             
+        coords_flatten = torch.flatten(coords, 1)            
+        relative_coords = coords_flatten[:, :, None] - coords_flatten[:, None, :]                   
+        relative_coords = relative_coords.permute(1, 2, 0).contiguous()                   
+        relative_coords[:, :, 0] += window_size[0] - 1                         
         relative_coords[:, :, 1] += window_size[1] - 1
         relative_coords[:, :, 0] *= 2 * window_size[1] - 1
         relative_position_index = \
             torch.zeros(size=(window_size[0] * window_size[1] + 1,) * 2, dtype=relative_coords.dtype)
-        relative_position_index[1:, 1:] = relative_coords.sum(-1)  # Wh*Ww, Wh*Ww
+        relative_position_index[1:, 1:] = relative_coords.sum(-1)                
         relative_position_index[0, 0:] = self.num_relative_distance - 3
         relative_position_index[0:, 0] = self.num_relative_distance - 2
         relative_position_index[0, 0] = self.num_relative_distance - 1
@@ -494,13 +494,13 @@ class RelativePositionBias(nn.Module):
         relative_position_bias = \
             self.relative_position_bias_table[self.relative_position_index.view(-1)].view(
                 self.window_size[0] * self.window_size[1] + 1,
-                self.window_size[0] * self.window_size[1] + 1, -1)  # Wh*Ww,Wh*Ww,nH
-        return relative_position_bias.permute(2, 0, 1).contiguous()  # nH, Wh*Ww, Wh*Ww
+                self.window_size[0] * self.window_size[1] + 1, -1)                  
+        return relative_position_bias.permute(2, 0, 1).contiguous()                    
 
 
 class EVAVisionTransformer(nn.Module):
-    """ Vision Transformer with support for patch or hybrid CNN input stage
-    """
+\
+       
     def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dim=768, depth=12,
                  num_heads=12, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop_rate=0., attn_drop_rate=0.,
                  drop_path_rate=0., norm_layer=nn.LayerNorm, init_values=None, patch_dropout=0.,
@@ -510,14 +510,14 @@ class EVAVisionTransformer(nn.Module):
         super().__init__()
         self.image_size = img_size
         self.num_classes = num_classes
-        self.num_features = self.embed_dim = embed_dim  # num_features for consistency with other models
+        self.num_features = self.embed_dim = embed_dim                                                  
 
         self.patch_embed = PatchEmbed(
             img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim)
         num_patches = self.patch_embed.num_patches
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        # self.mask_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+                                                                      
         if use_abs_pos_emb:
             self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dim))
         else:
@@ -536,14 +536,14 @@ class EVAVisionTransformer(nn.Module):
                 dim=half_head_dim,
                 pt_seq_len=pt_hw_seq_len,
                 ft_seq_len=hw_seq_len if intp_freq else None,
-                # patch_dropout=patch_dropout
+                                             
             )
         else: 
             self.rope = None
 
         self.naiveswiglu = naiveswiglu
 
-        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]  # stochastic depth decay rule
+        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]                               
         self.use_rel_pos_bias = use_rel_pos_bias
         self.blocks = nn.ModuleList([
             Block(
@@ -560,7 +560,7 @@ class EVAVisionTransformer(nn.Module):
             trunc_normal_(self.pos_embed, std=.02)
 
         trunc_normal_(self.cls_token, std=.02)
-        # trunc_normal_(self.mask_token, std=.02)
+                                                 
 
         self.apply(self._init_weights)
         self.fix_init_weight()
@@ -570,7 +570,7 @@ class EVAVisionTransformer(nn.Module):
             self.head.weight.data.mul_(init_scale)
             self.head.bias.data.mul_(init_scale)
 
-        # setting a patch_dropout of 0. would mean it is disabled and this function would be the identity fn
+                                                                                                            
         self.patch_dropout = PatchDropout(patch_dropout) if patch_dropout > 0. else nn.Identity()
 
         self.grad_checkpointing = grad_checkpointing
@@ -626,13 +626,13 @@ class EVAVisionTransformer(nn.Module):
         x = self.patch_embed(x)
         batch_size, seq_len, _ = x.size()
 
-        cls_tokens = self.cls_token.expand(batch_size, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
+        cls_tokens = self.cls_token.expand(batch_size, -1, -1)                                                
         x = torch.cat((cls_tokens, x), dim=1)
         if self.pos_embed is not None:
             x = x + self.pos_embed
         x = self.pos_drop(x)
 
-        # a patch_dropout of 0. would mean it is disabled and this function would do nothing but return what was passed in
+                                                                                                                          
         if os.getenv('RoPE') == '1':
             if self.training and not isinstance(self.patch_dropout, nn.Identity):
                 x, patch_indices_keep = self.patch_dropout(x)
@@ -668,7 +668,7 @@ class EVAVisionTransformer(nn.Module):
         return x
 
 class LayerNorm(nn.LayerNorm):
-    """Subclass torch's LayerNorm (with cast back to input dtype)."""
+                                                                     
 
     def forward(self, x: torch.Tensor):
         orig_type = x.dtype
@@ -690,22 +690,22 @@ class CLIPVisionCfg:
     mlp_ratio: float = 4.0
     patch_size: int = 16
     image_size: Union[Tuple[int, int], int] = 224
-    ls_init_value: Optional[float] = None  # layer scale initial value
-    patch_dropout: float = 0. # what fraction of patches to dropout during training (0 would mean disabled and no patches dropped) - 0.5 to 0.75 recommended in the paper for optimal results
-    global_average_pool: bool = False # whether to global average pool the last embedding layer, instead of using CLS token (https://arxiv.org/abs/2205.01580)
-    drop_path_rate: Optional[float] = None  # drop path rate
-    timm_model_name: str = None  # a valid model name overrides layers, width, patch_size
-    timm_model_pretrained: bool = False  # use (imagenet) pretrained weights for named model
-    timm_pool: str = 'avg'  # feature pooling for timm model ('abs_attn', 'rot_attn', 'avg', '')
-    timm_proj: str = 'linear'  # linear projection for timm model output ('linear', 'mlp', '')
-    timm_proj_bias: bool = False  # enable bias final projection
-    eva_model_name: str = None # a valid eva model name overrides layers, width, patch_size
+    ls_init_value: Optional[float] = None                             
+    patch_dropout: float = 0.                                                                                                                                                                
+    global_average_pool: bool = False                                                                                                                         
+    drop_path_rate: Optional[float] = None                  
+    timm_model_name: str = None                                                          
+    timm_model_pretrained: bool = False                                                     
+    timm_pool: str = 'avg'                                                                      
+    timm_proj: str = 'linear'                                                                 
+    timm_proj_bias: bool = False                                
+    eva_model_name: str = None                                                             
     qkv_bias: bool = True
     fusedLN: bool = False
     xattn: bool = False
     postnorm: bool = False
     rope: bool = False
-    pt_hw_seq_len: int = 16   # 224/14
+    pt_hw_seq_len: int = 16           
     intp_freq: bool = False
     naiveswiglu: bool = False
     subln: bool = False
@@ -725,7 +725,7 @@ def _build_vision_tower(
             img_size=vision_cfg.image_size,
             patch_size=vision_cfg.patch_size,
             num_classes=embed_dim,
-            use_mean_pooling=vision_cfg.global_average_pool, #False
+            use_mean_pooling=vision_cfg.global_average_pool,       
             init_values=vision_cfg.ls_init_value,
             patch_dropout=vision_cfg.patch_dropout,
             embed_dim=vision_cfg.width,
@@ -738,7 +738,7 @@ def _build_vision_tower(
             xattn=vision_cfg.xattn,
             rope=vision_cfg.rope,
             postnorm=vision_cfg.postnorm,
-            pt_hw_seq_len= vision_cfg.pt_hw_seq_len,   # 224/14
+            pt_hw_seq_len= vision_cfg.pt_hw_seq_len,           
             intp_freq= vision_cfg.intp_freq,
             naiveswiglu= vision_cfg.naiveswiglu,
             subln= vision_cfg.subln
@@ -775,7 +775,7 @@ class Eva2LargeEncoder(nn.Module):
         self.model = _build_vision_tower(**self.config)
 
 
-    def forward(self, image, **kwargs): # diverge from hf version
+    def forward(self, image, **kwargs):                          
         encode = self.model(image, return_all_features=True)[:, 1:, :]
         return encode
 

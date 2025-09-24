@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""
-Convert Circuit Netlists: Remove N-nodes and Measurement Components
-
-This script processes netlists to remove intermediate measurement nodes (N-prefixed)
-and V_meas components, restoring the original circuit connectivity that matches
-the visual circuit diagrams.
-
-Pattern Recognition:
-- Original: R1 2 1 100    (component from node 2 to node 1)
-- With measurement: R1 2 N21 100 + V_meas1 1 N21 0
-- Converted back: R1 2 1 100
-
-Usage:
-    python convert_netlist_remove_n_nodes.py input.json output.json
-"""
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+   
 
 import json
 import re
@@ -21,15 +21,15 @@ import sys
 from typing import Dict, List, Tuple
 
 def parse_netlist_line(line: str) -> Tuple[str, str, str, str]:
-    """
-    Parse a SPICE netlist line into components.
-    
-    Args:
-        line: SPICE netlist line (e.g., "R1 2 N21 100")
-        
-    Returns:
-        Tuple of (component_name, node1, node2, value)
-    """
+\
+\
+\
+\
+\
+\
+\
+\
+       
     parts = line.strip().split()
     if len(parts) >= 4:
         return parts[0], parts[1], parts[2], ' '.join(parts[3:])
@@ -39,26 +39,26 @@ def parse_netlist_line(line: str) -> Tuple[str, str, str, str]:
         return line, "", "", ""
 
 def find_measurement_pairs(netlist_lines: List[str]) -> Dict[str, Tuple[str, str, str, str]]:
-    """
-    Find pairs of components that form measurement circuits.
-    
-    Args:
-        netlist_lines: List of netlist lines
-        
-    Returns:
-        Dict mapping N-node names to (original_component_info, measurement_component_info)
-    """
+\
+\
+\
+\
+\
+\
+\
+\
+       
     components = {}
     measurement_sources = {}
     
-    # Parse all components
+                          
     for line in netlist_lines:
         if not line.strip():
             continue
             
         comp_name, node1, node2, value = parse_netlist_line(line)
         
-        # Check if this connects to an N-node
+                                             
         n_node = None
         other_node = None
         
@@ -71,24 +71,24 @@ def find_measurement_pairs(netlist_lines: List[str]) -> Dict[str, Tuple[str, str
             
         if n_node:
             if comp_name.startswith('V_meas') or comp_name.startswith('VI'):
-                # This is a measurement voltage source
+                                                      
                 measurement_sources[n_node] = (comp_name, node1, node2, value, line)
             else:
-                # This is a regular component connecting to N-node
+                                                                  
                 components[n_node] = (comp_name, node1, node2, value, line, other_node)
     
     return components, measurement_sources
 
 def convert_netlist_remove_n_nodes(netlist: str) -> str:
-    """
-    Convert a netlist to remove N-nodes and measurement components.
-    
-    Args:
-        netlist: Original netlist string with N-nodes
-        
-    Returns:
-        Converted netlist string without N-nodes
-    """
+\
+\
+\
+\
+\
+\
+\
+\
+       
     lines = netlist.split('\n')
     components, measurement_sources = find_measurement_pairs(lines)
     
@@ -101,11 +101,11 @@ def convert_netlist_remove_n_nodes(netlist: str) -> str:
             
         comp_name, node1, node2, value = parse_netlist_line(line)
         
-        # Skip measurement voltage sources (V_meas, VI)
+                                                       
         if comp_name.startswith('V_meas') or comp_name.startswith('VI'):
             continue
             
-        # Check if this component connects to an N-node
+                                                       
         n_node = None
         if node1.startswith('N') and not node1.startswith('Ninv') and not node1.startswith('Nmeas'):
             n_node = node1
@@ -113,18 +113,18 @@ def convert_netlist_remove_n_nodes(netlist: str) -> str:
             n_node = node2
             
         if n_node and n_node not in processed_n_nodes:
-            # Find the measurement source that completes this connection
+                                                                        
             if n_node in measurement_sources:
                 meas_comp, meas_node1, meas_node2, meas_value, meas_line = measurement_sources[n_node]
                 
-                # Determine the final connection
-                # The measurement source connects the N-node to the final destination
+                                                
+                                                                                     
                 if meas_node1 == n_node:
                     final_node = meas_node2
                 else:
                     final_node = meas_node1
                 
-                # Reconstruct the original component connection
+                                                               
                 if node1 == n_node:
                     converted_line = f"{comp_name} {final_node} {node2} {value}".strip()
                 else:
@@ -133,29 +133,29 @@ def convert_netlist_remove_n_nodes(netlist: str) -> str:
                 converted_lines.append(converted_line)
                 processed_n_nodes.add(n_node)
             else:
-                # No measurement source found, keep original (shouldn't happen in well-formed netlists)
+                                                                                                       
                 converted_lines.append(line)
         elif not n_node:
-            # Regular component without N-nodes, keep as-is
+                                                           
             converted_lines.append(line)
-        # Skip lines that connect to already processed N-nodes
+                                                              
     
     return '\n'.join(converted_lines)
 
 def process_json_file(input_file: str, output_file: str):
-    """
-    Process a JSON file containing circuit data and convert all netlists.
-    
-    Args:
-        input_file: Path to input JSON file
-        output_file: Path to output JSON file
-    """
+\
+\
+\
+\
+\
+\
+       
     print(f"Loading {input_file}...")
     
     with open(input_file, 'r') as f:
         data = json.load(f)
     
-    # Handle different JSON structures
+                                      
     if 'results' in data:
         circuits = data['results']
     elif isinstance(data, list):
@@ -174,20 +174,20 @@ def process_json_file(input_file: str, output_file: str):
         if 'cleaned_netlist' in circuit:
             original_netlist = circuit['cleaned_netlist']
             
-            # Convert the netlist
+                                 
             converted_netlist = convert_netlist_remove_n_nodes(original_netlist)
             
-            # Update the circuit data
+                                     
             circuit['cleaned_netlist'] = converted_netlist
-            circuit['original_netlist_with_measurements'] = original_netlist  # Preserve original
+            circuit['original_netlist_with_measurements'] = original_netlist                     
             
             converted_count += 1
             
-            # Print progress and examples
-            if i < 3:  # Show first 3 conversions as examples
+                                         
+            if i < 3:                                        
                 print(f"\n=== Example {i+1}: {circuit_id} ===")
                 print("Original:")
-                for line in original_netlist.split('\n')[:5]:  # Show first 5 lines
+                for line in original_netlist.split('\n')[:5]:                      
                     print(f"  {line}")
                 print("Converted:")
                 for line in converted_netlist.split('\n')[:5]:

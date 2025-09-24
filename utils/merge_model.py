@@ -1,4 +1,4 @@
-# -*- encoding: utf-8 -*-
+                         
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -19,7 +19,7 @@ def main():
     parser = FineTuneTestCogVLMModel.add_model_specific_args(parser)
     args = parser.parse_args()
 
-    # load model
+                
     model, model_args = FineTuneTestCogVLMModel.from_pretrained(
         args.from_pretrained,
         args=argparse.Namespace(

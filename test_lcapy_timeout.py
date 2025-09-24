@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 
 def run_with_timeout(func, timeout_seconds):
-    """Multiprocessing timeout for lcapy operations"""
+                                                      
     def target_func(queue, func):
         try:
             result = func()
@@ -34,7 +34,7 @@ def run_with_timeout(func, timeout_seconds):
         return None, result
 
 def test_simple_circuit():
-    """Test with a simple circuit that should work quickly"""
+                                                             
     try:
         from lcapy import Circuit
         netlist = """
@@ -48,10 +48,10 @@ def test_simple_circuit():
         return f"Error: {e}"
 
 def test_complex_circuit():
-    """Test with a complex circuit that might cause issues"""
+                                                             
     try:
         from lcapy import Circuit
-        # A more complex circuit with many nodes
+                                                
         netlist = """
         R1 1 0 1k
         R2 1 2 2k
@@ -67,13 +67,13 @@ def test_complex_circuit():
         V1 6 0 10
         """
         circuit = Circuit(netlist)
-        # This might trigger expensive symbolic computation
+                                                           
         return str(circuit.laplace().nodal_analysis().nodal_equations())
     except Exception as e:
         return f"Error: {e}"
 
 def test_lcapy_timeouts():
-    # Set multiprocessing method
+                                
     try:
         multiprocessing.set_start_method('spawn', force=True)
     except RuntimeError:
@@ -81,7 +81,7 @@ def test_lcapy_timeouts():
     
     print("🧪 Testing lcapy timeout mechanism...")
     
-    # Test 1: Simple circuit should succeed
+                                           
     print("\n1️⃣ Testing simple circuit (should succeed quickly):")
     result, error = run_with_timeout(test_simple_circuit, 10)
     if error:
@@ -89,7 +89,7 @@ def test_lcapy_timeouts():
     else:
         print(f"✅ Success: {result}")
     
-    # Test 2: Complex circuit with short timeout
+                                                
     print("\n2️⃣ Testing complex circuit with short timeout (might timeout):")
     result, error = run_with_timeout(test_complex_circuit, 5)
     if error:
@@ -97,7 +97,7 @@ def test_lcapy_timeouts():
     else:
         print(f"✅ Completed successfully: {result[:100]}...")
     
-    # Test 3: Complex circuit with longer timeout
+                                                 
     print("\n3️⃣ Testing complex circuit with longer timeout:")
     result, error = run_with_timeout(test_complex_circuit, 20)
     if error:

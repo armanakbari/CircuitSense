@@ -80,7 +80,7 @@ def generate_circuits(paths, args):
     if getattr(args, 'rlc', False):
         cmd.extend(["--rlc"])
 
-    # Forward no-measurements flag to generator
+                                               
     if getattr(args, 'no_meas', False):
         cmd.extend(["--no-meas"])
     
@@ -139,7 +139,7 @@ def derive_equations(paths, args):
     if args.fast_analysis:
         cmd.append("--fast_mode")
     
-    # Add symbolic question generation if requested
+                                                   
     if hasattr(args, 'generate_symbolic_questions') and args.generate_symbolic_questions:
         cmd.append("--generate_symbolic_questions")
         print("🎓 Generating symbolic transfer function questions...")
@@ -154,7 +154,7 @@ def derive_equations(paths, args):
         if equations_output.exists():
             print(f"Symbolic equations saved to: {equations_output}")
             
-            # Show symbolic questions summary if they were generated
+                                                                    
             if hasattr(args, 'generate_symbolic_questions') and args.generate_symbolic_questions:
                 print("🎓 Symbolic transfer function questions included in output!")
         else:
@@ -296,7 +296,7 @@ Examples:
     
     args = parser.parse_args()
     
-    # Handle questions_only flag
+                                
     if args.questions_only:
         args.derive_equations = True
         args.generate_symbolic_questions = True

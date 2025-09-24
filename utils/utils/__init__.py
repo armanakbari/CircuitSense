@@ -4,4 +4,4 @@ from .vision import get_image_processor
 from .grounding_parser import parse_response
 from .dataset import ItemDataset
 from .circuit_utils import ImageLabelsDataset, compile_latex
-# from .texpdf2jpg import pdf2jpg
+                                 

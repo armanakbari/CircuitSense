@@ -14,7 +14,7 @@ raw_dataset_path = f"datasets/{dataset_name}"
 splited_dataset_path = f"datasets/{dataset_name}_split"
 
 splits = ['train', 'valid', 'dev', 'test']
-# split_ratio = [0.24, 0.02, 0.04]
+                                  
 split_ratio = [0.8, 0.09, 0.01, 0.1]
 seed = 2023
 
@@ -31,7 +31,7 @@ all_files = find_all_files(raw_dataset_path)
 with open(f"{raw_dataset_path}/labels.json", "r") as f:
     labels = json.load(f)
 
-# split
+       
 os.makedirs(f"{splited_dataset_path}", exist_ok=True)
 for split in splits:
     os.makedirs(f"{splited_dataset_path}/{split}", exist_ok=True)
@@ -53,21 +53,21 @@ for i in range(len(splits)):
     split2files[split] = split_data
 
 
-# def get_key(path):
-#     return path.split("/")[-1].replace(".jpg", "")
+                    
+                                                    
 
 def get_path(key):
     return os.path.join(raw_dataset_path, key+".jpg")
 
-# train_labels = {k:v for k,v in labels.items() if get_path(k) in train}
-# valid_labels = {k:v for k,v in labels.items() if get_path(k) in valid}
-# test_labels = {k:v for k,v in labels.items() if get_path(k) in test}
+                                                                        
+                                                                        
+                                                                      
 
 split2labels = {}
 for split in splits:
     split2labels[split] = {k:v for k,v in labels.items() if get_path(k) in split2files[split]}
 
-# check if valid and test labels are in train
+                                             
 valid_labels = split2labels["valid"] if "valid" in split2labels else {}
 test_labels = split2labels["test"] if "test" in split2labels else {}
 train_labels = split2labels["train"]
@@ -76,7 +76,7 @@ test_in_train_keys = [key for key in test_labels.values() if key in train_labels
 num_valid_in_train, num_test_in_train = len(valid_in_train_keys), len(test_in_train_keys)
 print(f"num_valid_in_train: {num_valid_in_train}, num_test_in_train: {num_test_in_train}")
 
-# print(f"num_train: {len(train)}, num_valid: {len(valid)}, num_test: {len(test)}")
+                                                                                   
 for split in splits:
     print(f"num_{split}: {len(split2files[split])}, num_{split}_labels: {len(split2labels[split])}\n\n")
 
@@ -99,17 +99,17 @@ for split in splits:
     print(f"{split} done, {cnt} files")
     
     with open(os.path.join(f"{splited_dataset_path}/{split}", "labels.json"), "w") as f:
-        # json.dump(eval(f"{split}_labels"), f, indent=4)
+                                                         
         json.dump(split2labels[split], f, indent=4)
     print(f"building {split} done")
 
-# print("building train")
-# for file in train:
-#     shutil.copy(file, os.path.join(f"{splited_dataset_path}/train", file.split("/")[-1]))
-# print("building valid")
-# for file in valid:
-#     shutil.copy(file, os.path.join(f"{splited_dataset_path}/train", file.split("/")[-1]))
-# print("building test")
-# for file in test:
-#     shutil.move(file, os.path.join("archive_split/test", file.split("/")[-1]))
+                         
+                    
+                                                                                           
+                         
+                    
+                                                                                           
+                        
+                   
+                                                                                
 print("done")

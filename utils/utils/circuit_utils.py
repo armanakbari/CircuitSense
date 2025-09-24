@@ -31,7 +31,7 @@ def compile_latex(folder, file_name, latex_code):
                 succ = True
             else:
                 print("Failed to compile.")
-                # delete failed
+                               
     except Exception as e:
         print(e)
 
@@ -86,16 +86,16 @@ class ImageLabelsDataset(Dataset):
 
     def __getitem__(self, index):
         data = self.data[index]
-        # img
+             
         try:
             img = Image.open(data).convert('RGB')
         except Exception as e:
             print_rank0(e, level=logging.WARNING)
             return {}
         img_dict = self.process_img(img)
-        # text
-        # label = data.split('/')[-1].split('.')[0]
-        # uni_key = label
+              
+                                                   
+                         
         uni_key = self.get_key(data)
         assert uni_key in self.labels, f"{uni_key} not in labels, {self.labels.keys()}"
         label = self.labels[uni_key]
@@ -104,10 +104,10 @@ class ImageLabelsDataset(Dataset):
         if text_dict is None:
             print_rank0(f"Process text failed. Please check the max_target_length & max_source_length.\n The data is {data}", level=logging.WARNING)
             return {}
-        # other attr
+                    
         ret = {**img_dict, **text_dict, "question_id": uni_key}
-        # print(ret)
-        # exit()
+                    
+                
         return ret
 
 class ItemDataset(Dataset):
@@ -135,20 +135,20 @@ class ItemDataset(Dataset):
 
     def __getitem__(self, index):
         data = self.data[index]
-        # img
+             
         try:
             img = Image.open(data).convert('RGB')
         except Exception as e:
             print_rank0(e, level=logging.WARNING)
             return {}
         img_dict = self.process_img(img)
-        # text
+              
         label = data.split('/')[-1].split('.')[0]
         uni_key = label
         text_dict = self.process_text(label, "CAPTCHA:")
         if text_dict is None:
             print_rank0(f"Process text failed. Please check the max_target_length & max_source_length.\n The data is {data}", level=logging.WARNING)
             return {}
-        # other attr
+                    
         ret = {**img_dict, **text_dict, "question_id": uni_key}
         return ret

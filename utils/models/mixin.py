@@ -30,7 +30,7 @@ class LlamaVisionExpertFCMixin(BaseMixin):
             skip_init=True,
             device=device
         ) for i in range(num_layers)])
-        # Trainable vision expert parameters
+                                            
         vision_dense_h_to_4h_list = []
         vision_dense_4h_to_h_list = []
         gate_proj_list = []
@@ -50,7 +50,7 @@ class LlamaVisionExpertFCMixin(BaseMixin):
                 device=device
             )
 
-            # Project back to h.
+                                
             vision_dense_4h_to_h = RowParallelLinear(
                 hidden_features,
                 in_features,
@@ -112,14 +112,14 @@ class LlamaVisionExpertFCMixin(BaseMixin):
 
             language_hidden_state = hidden_states[~vision_expert_mask.bool()]
             language_intermediate_parallel = self.activation_func(mixin_self.gate_proj[kw_args['layer_id']](language_hidden_state)) * self.dense_h_to_4h(language_hidden_state)
-            output[~vision_expert_mask.bool()] = self.dense_4h_to_h(language_intermediate_parallel)  # language_output
+            output[~vision_expert_mask.bool()] = self.dense_4h_to_h(language_intermediate_parallel)                   
 
             vision_hidden_state = hidden_states[vision_expert_mask.bool()]
             vision_intermediate_parallel = vision_dense_h_to_4h(vision_hidden_state)
             gate_output = vision_gate_proj(vision_hidden_state)
 
             vision_intermediate_parallel *= self.activation_func(gate_output)
-            output[vision_expert_mask.bool()] = vision_dense_4h_to_h(vision_intermediate_parallel)  # vision_output
+            output[vision_expert_mask.bool()] = vision_dense_4h_to_h(vision_intermediate_parallel)                 
         else:
             intermediate_parallel = self.activation_func(mixin_self.gate_proj[kw_args['layer_id']](hidden_states)) * self.dense_h_to_4h(hidden_states)
             output = self.dense_4h_to_h(intermediate_parallel)
@@ -160,7 +160,7 @@ class LlamaVisionExpertAttnMixin(BaseMixin):
         self.vision_layer_range = vision_layer_range
 
         self.use_vision_expert = use_vision_expert
-        # Trainable vision expert parameters
+                                            
 
         if self.use_vision_expert:
             vision_query_key_value_list = []
@@ -228,9 +228,9 @@ class LlamaVisionExpertAttnMixin(BaseMixin):
             language_hidden_states = hidden_states[~vision_expert_mask.bool()]
             vision_hidden_states = hidden_states[vision_expert_mask.bool()]
             mixed_raw_layer[~vision_expert_mask.bool()] = self.query_key_value(
-                language_hidden_states)  # language_mixed_raw_layer
+                language_hidden_states)                            
             mixed_raw_layer[vision_expert_mask.bool()] = vision_query_key_value(
-                vision_hidden_states)  # vision_mixed_raw_layer
+                vision_hidden_states)                          
         else:
             mixed_raw_layer = self.query_key_value(hidden_states)
 
@@ -258,8 +258,8 @@ class LlamaVisionExpertAttnMixin(BaseMixin):
             parallel_size = mpu.get_model_parallel_world_size()
             target_shape = context_layer.shape[:-1] + (context_layer.shape[-1] * parallel_size,)
             output = torch.empty(target_shape, dtype=hidden_states.dtype, device=hidden_states.device)
-            output[~vision_expert_mask.bool()] = self.dense(context_layer[~vision_expert_mask.bool()])  # language
-            output[vision_expert_mask.bool()] = vision_dense(context_layer[vision_expert_mask.bool()])  # vision
+            output[~vision_expert_mask.bool()] = self.dense(context_layer[~vision_expert_mask.bool()])            
+            output[vision_expert_mask.bool()] = vision_dense(context_layer[vision_expert_mask.bool()])          
         else:
             output = self.dense(context_layer)
 

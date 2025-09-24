@@ -13,13 +13,13 @@ def preprocess_latex(latex_code):
 def pdf2jpg(pdfPath, imgPath, zoom_x, zoom_y, rotation_angle=0, reconvert=False):
 
     try:
-        # Open the PDF file
+                           
         pdf = fitz.open(pdfPath)
         if os.path.exists(imgPath) and not reconvert:
             print(f"Image file {imgPath} already exists, skip converting...")
             return True
         assert pdf.page_count > 0, "PDF page count is 0"
-        # for pg in range(0, pdf.pageCount):
+                                            
         page = pdf[0]
         trans = fitz.Matrix(zoom_x, zoom_y).prerotate(rotation_angle)
         pm = page.get_pixmap(matrix=trans, alpha=False)
@@ -55,7 +55,7 @@ def compile_latex(folder, file_name, latex_code):
                 succ = True
             else:
                 print(f"Failed to compile. latex file: {folder}/{file_name}.tex")
-                # delete failed
+                               
     except Exception as e:
         print(e)
 
