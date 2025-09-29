@@ -1,4 +1,9 @@
-Generating synthetic circuits
+# CircuitSense: A Hierarchical Circuit System Benchmark Bridging Visual Comprehension and Symbolic Reasoning in Engineering Design Process
+
+Welcome to official repo of CircuitSense, a comprehensive visual circuit benchmark that evaluates models' capability in symbolic reasoning and visual mathematical derivation. We introduce a hierarchical synthetic generation pipeline consisting of a grid-based schematic generator and a block diagram generator with
+auto-derived symbolic equation labels. This repository contains the code for our hierarchical synthetic generation pipeline.
+
+For further information, please refer to our [preprint](https://arxiv.org/pdf/2509.22339).
 
 
 Requirements:
@@ -104,7 +109,9 @@ python scripts/analyze_synthetic_circuits_robust.py \
   --max_circuits 50
 ```
 
-#### BibTex:
+## Citation:
+If you find CircuitSense helpful for your research please cite our work:
+
 ```
 @misc{akbari2025circuitsensehierarchicalcircuitbenchmark,
       title={CircuitSense: A Hierarchical Circuit System Benchmark Bridging Visual Comprehension and Symbolic Reasoning in Engineering Design Process}, 
