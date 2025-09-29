@@ -104,4 +104,19 @@ python scripts/analyze_synthetic_circuits_robust.py \
   --max_circuits 50
 ```
 
+#### BibTex:
+```
+@misc{akbari2025circuitsensehierarchicalcircuitbenchmark,
+      title={CircuitSense: A Hierarchical Circuit System Benchmark Bridging Visual Comprehension and Symbolic Reasoning in Engineering Design Process}, 
+      author={Arman Akbari and Jian Gao and Yifei Zou and Mei Yang and Jinru Duan and Dmitrii Torbunov and Yanzhi Wang and Yihui Ren and Xuan Zhang},
+      year={2025},
+      eprint={2509.22339},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2509.22339}, 
+}
+```
+
 This repository is based on [MAPS: Advancing Multi-modal Reasoning in Expert-level Physical Science](https://arxiv.org/abs/2501.10768). 
+
+
