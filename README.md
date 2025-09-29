@@ -1,9 +1,20 @@
 # CircuitSense: A Hierarchical Circuit System Benchmark Bridging Visual Comprehension and Symbolic Reasoning in Engineering Design Process
+![Claude](https://img.shields.io/badge/Task-Multi_Modal-orange)
+![Claude](https://img.shields.io/badge/Task-Mathematical_reasoning-orange)
+![Claude](https://img.shields.io/badge/Dataset-CircuitSense-blue)
+
+![Claude](https://img.shields.io/badge/Model-Claude_Sonnet_4-green)
+![Gemini](https://img.shields.io/badge/Model-Gemini_2.5_Pro-green)
+![GPT](https://img.shields.io/badge/Model-GPT_4o-green)
+![qwen](https://img.shields.io/badge/Model-Qwen_2.5_VL-green)
+![internvl](https://img.shields.io/badge/Model-InternVL3-green)
+![GLM](https://img.shields.io/badge/Model-GLM_4.5V-green)
 
 Welcome to official repo of CircuitSense, a comprehensive visual circuit benchmark that evaluates models' capability in symbolic reasoning and visual mathematical derivation. We introduce a hierarchical synthetic generation pipeline consisting of a grid-based schematic generator and a block diagram generator with
 auto-derived symbolic equation labels. This repository contains the code for our hierarchical synthetic generation pipeline.
 
 For further information, please refer to our [preprint](https://arxiv.org/pdf/2509.22339).
+
 [🌐 Webpage] [🤗 Hugginface Dataset] [📑 Paper]
 
 ## 💥 News
