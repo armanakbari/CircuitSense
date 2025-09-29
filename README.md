@@ -15,11 +15,18 @@ auto-derived symbolic equation labels. This repository contains the code for our
 
 For further information, please refer to our [preprint](https://arxiv.org/pdf/2509.22339).
 
-[🌐 Webpage] [🤗 Hugginface Dataset] [📑 Paper]
+[[🌐 Webpage](https://circuitsense-benchmark.github.io)] [[🤗 Hugginface Dataset](https://huggingface.co/datasets/armanakbari4/CircuitSense)] [[📑 Paper](https://arxiv.org/pdf/2509.22339)]
 
 ## 💥 News
 * **[2025.09.29]** 🔥 We release the code for our hierarchical synthetic generation pipeline
 * **[2025.09.25]** The [arxiv paper](https://arxiv.org/pdf/2509.22339) is online
+
+
+## About CircuitSense
+<p align="center">
+    <img src="assets/overview_arman.pdf" width="65%"> <br>
+</p>
+We introduce CircuitSense, a comprehensive benchmark of 8,006 problems for evaluating visual-to-mathematical reasoning in circuit understanding which combines curated questions with synthetic problems focused on symbolic equation derivation. Our hierarchical synthetic generation pipeline produces novel circuits across six levels with guaranteed ground-truth symbolic equations, enabling rigorous evaluation. Our extensive evaluation on perception, analysis, and design tasks shows that models demonstrate adequate perception (85%+ for closed-source) but fail catastrophically at mathematical symbolic modeling (below 19%). This mathematical weakness directly undermines their design capabilities.
 
 Requirements:
 ```
