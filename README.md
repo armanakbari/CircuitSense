@@ -4,7 +4,11 @@ Welcome to official repo of CircuitSense, a comprehensive visual circuit benchma
 auto-derived symbolic equation labels. This repository contains the code for our hierarchical synthetic generation pipeline.
 
 For further information, please refer to our [preprint](https://arxiv.org/pdf/2509.22339).
+[🌐 Webpage] [🤗 Hugginface Dataset] [📑 Paper]
 
+## 💥 News
+* **[2025.09.29]** 🔥 We release the code for our hierarchical synthetic generation pipeline
+* **[2025.09.25]** The [arxiv paper](https://arxiv.org/pdf/2509.22339) is online
 
 Requirements:
 ```
