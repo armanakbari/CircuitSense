@@ -134,7 +134,7 @@ python scripts/analyze_synthetic_circuits_robust.py \
 ## Citation:
 If you find CircuitSense helpful for your research please cite our work:
 
-```
+```bibtex
 @misc{akbari2025circuitsensehierarchicalcircuitbenchmark,
       title={CircuitSense: A Hierarchical Circuit System Benchmark Bridging Visual Comprehension and Symbolic Reasoning in Engineering Design Process}, 
       author={Arman Akbari and Jian Gao and Yifei Zou and Mei Yang and Jinru Duan and Dmitrii Torbunov and Yanzhi Wang and Yihui Ren and Xuan Zhang},
