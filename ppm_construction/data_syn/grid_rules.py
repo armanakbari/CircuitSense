@@ -122,34 +122,16 @@ flow_direction = ["^>", ">_", "^>", "_>"]
 def draw_integrator_template(center_x, center_y, resistor_value, capacitor_value, 
                            use_value_annotation=True, label_subscript=1, 
                            orientation="horizontal_lr"):
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-       
-    
-                      
+               
     if use_value_annotation:
         r_label = f"{int(resistor_value)} \\mathrm{{\\Omega}}"
         c_label = f"{int(capacitor_value)} \\mathrm{{F}}"
     else:
         r_label = f"Rint{int(label_subscript)}"
         c_label = f"Cint{int(label_subscript)}"
-    
-                                   
+                                 
     latex_code = f"% Integrator template ({orientation}) centered at ({center_x:.1f}, {center_y:.1f})\n"
-    
-                             
+                         
     if use_value_annotation:
         tf_label = f"-\\frac{{1}}{{{int(resistor_value)} \\cdot {int(capacitor_value)} \\cdot s}}"
     else:
@@ -367,23 +349,7 @@ def draw_integrator_template(center_x, center_y, resistor_value, capacitor_value
 def draw_bjt_small_signal_template(center_x, center_y, gm_value, rpi_value, ro_value, 
                                   use_value_annotation=True, label_subscript=1, 
                                   orientation="horizontal_lr"):
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-       
-    
-                      
+                  
     if use_value_annotation:
         gm_label = f"{gm_value:.1f} \\mathrm{{mS}}"
         rpi_label = f"{int(rpi_value)} \\mathrm{{\\Omega}}"
@@ -448,24 +414,7 @@ def draw_bjt_small_signal_template(center_x, center_y, gm_value, rpi_value, ro_v
 def draw_mosfet_small_signal_template(center_x, center_y, gm_value, cgs_value, cgd_value, ro_value,
                                      use_value_annotation=True, label_subscript=1, 
                                      orientation="horizontal_lr"):
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-       
-    
-                      
+                
     if use_value_annotation:
         gm_label = f"{gm_value:.1f} \\mathrm{{mS}}"
         cgs_label = f"{cgs_value:.1f} \\mathrm{{pF}}"
@@ -539,24 +488,7 @@ def draw_mosfet_small_signal_template(center_x, center_y, gm_value, cgs_value, c
 def draw_bjt_small_signal_2terminal(center_x, center_y, gm_value, rpi_value, ro_value, 
                                    use_value_annotation=True, label_subscript=1, 
                                    orientation="horizontal_lr"):
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-       
-    
-                      
+                
     if use_value_annotation:
         gm_label = f"{gm_value:.1f} \\mathrm{{mS}}"
         rpi_label = f"{int(rpi_value)} \\mathrm{{\\Omega}}"
