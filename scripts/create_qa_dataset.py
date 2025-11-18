@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-\
-\
-\
-\
-\
-\
-\
+
    
 
 import json
@@ -21,19 +15,9 @@ import subprocess
 import tempfile
 import os
 
-def parse_control_block(netlist: str) -> List[Dict[str, str]]:
-\
-\
-\
-\
-\
-\
-\
-\
-       
+def parse_control_block(netlist: str) -> List[Dict[str, str]]:    
     measurements = []
-    
-                         
+                 
     control_match = re.search(r'\.control\s*\n(.*?)\n\.endc', netlist, re.DOTALL | re.IGNORECASE)
     if not control_match:
         return measurements
@@ -47,10 +31,7 @@ def parse_control_block(netlist: str) -> List[Dict[str, str]]:
                                            
         if not line or line == 'op':
             continue
-            
-                                              
-                                                  
-                                                   
+                                           
         print_match = re.match(r'print\s+([^;]+)\s*;\s*measurement\s+of\s+(.+)', line, re.IGNORECASE)
         if print_match:
             command = print_match.group(1).strip()
@@ -65,16 +46,7 @@ def parse_control_block(netlist: str) -> List[Dict[str, str]]:
     return measurements
 
 def generate_questions_from_measurements(measurements: List[Dict[str, str]], circuit_id: str) -> List[Dict[str, str]]:
-\
-\
-\
-\
-\
-\
-\
-\
-\
-       
+   
     questions = []
     
     for i, meas in enumerate(measurements):
@@ -119,62 +91,27 @@ def generate_questions_from_measurements(measurements: List[Dict[str, str]], cir
     return questions
 
 def simulate_circuit_for_answers(original_netlist: str, measurements: List[Dict[str, str]]) -> Dict[str, float]:
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-       
 
     answers: Dict[str, float] = {}
-    
     try:
-                                                                         
                                                               
-                                                                         
         tran_match = re.search(r'\btran\s+[^\n]*', original_netlist, re.IGNORECASE)
         is_transient = tran_match is not None
         tran_line = tran_match.group(0).strip() if tran_match else ''
-
-                                                                         
-                                                                        
-                                                                          
-                                                              
-                                                                         
+                                                               
         parts = re.split(r'(?i)\.control', original_netlist, maxsplit=1)
         components_part = parts[0].rstrip()                                        
 
         if not components_part.strip():
                                                                        
             components_part = original_netlist.strip()
-
-                                                                         
-                                  
-                                                                         
+                                                               
         control_lines = [".control"]
         if is_transient:
             control_lines.append(tran_line)
         else:
             control_lines.append("op")
-
-                                                                            
-                                                                              
-                                                                            
-                                                         
+                                              
         mapped_commands: Dict[str, Tuple[str, int]] = {}
 
         for meas in measurements:
@@ -199,10 +136,7 @@ def simulate_circuit_for_answers(original_netlist: str, measurements: List[Dict[
 
                        
         full_netlist = components_part + "\n\n" + "\n".join(control_lines) + "\n.end\n"
-
-                                                                         
-                                                   
-                                                                         
+                                                                
         with tempfile.NamedTemporaryFile(mode='w', suffix='.cir', delete=False) as tmp_file:
             tmp_file.write(full_netlist)
             tmp_filename = tmp_file.name
@@ -216,10 +150,7 @@ def simulate_circuit_for_answers(original_netlist: str, measurements: List[Dict[
             )
 
             output_text = result.stdout
-
-                                                                     
-                                                            
-                                                                     
+                                                      
             for orig_cmd, (print_cmd, sign) in mapped_commands.items():
                                                        
                 pattern_cmd = re.sub(r'\s+', '', print_cmd, flags=re.IGNORECASE)
@@ -252,18 +183,7 @@ def simulate_circuit_for_answers(original_netlist: str, measurements: List[Dict[
     return answers
 
 def create_qa_dataset(analysis_file: str, output_file: str = None, max_circuits: int = None) -> Dict[str, Any]:
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-       
-    
+
     print(f"Loading circuit analysis from {analysis_file}...")
     
     with open(analysis_file, 'r') as f:
@@ -424,8 +344,7 @@ def main():
         print(f"Analysis file not found: {args.analysis_file}")
         return
     
-    print("🔬 CREATING CIRCUIT QA DATASET")
-    print("="*50)
+    print("CREATING CIRCUIT QA DATASET")
     
                        
     qa_dataset = create_qa_dataset(
@@ -437,7 +356,7 @@ def main():
                    
     show_dataset_examples(qa_dataset)
     
-    print(f"\n✅ QA dataset creation complete!")
+    print(f"\nQA dataset creation complete!")
     print(f"Dataset saved to: {args.output_file}")
 
 

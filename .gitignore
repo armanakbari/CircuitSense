@@ -68,3 +68,14 @@ scripts/sctrip*
 *.fdb_latexmk
 *.fls
 *.synctex.gz
+
+
+./ppm_construction/ft_vlm/
+./ppm_construction/data_syn/final_working_bjt_circuit.tex
+./ppm_construction/data_syn/improved_bjt_circuit.tex
+./ppm_construction/data_syn/test_bjt_circuit.tex
+./ppm_construction/data_syn/test_bjt_template.aux
+./ppm_construction/data_syn/test_bjt_template.log  
+./ppm_construction/data_syn/test_bjt_template.tex
+./ppm_construction/test_bjt_1.tex
+./ppm_construction/data_syn/data/*
