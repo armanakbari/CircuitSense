@@ -2144,438 +2144,437 @@ class Circuit:
         print(f"Identified {len(high_conflict_areas)} high-conflict areas")
 
 def gen_circuit(note="v1", id="", symbolic=False, simple_circuits=False, integrator=False, rlc=False, no_meas=False):
-
-                       
+               
     if int(note[1:]) != 11:
         raise NotImplementedError
     
     # v11 generation
 
                                             
-        if simple_circuits:
-                                                           
-            num_grid_options = [2, 3, 4]
-            num_grid_dis =     [8, 6, 1]                                   
-                                                                          
-            num_comp_dis = [8, 3, 0, 8, 2, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8]                                                         
-            num_comp_dis_outer = [6, 3, 0, 6, 1, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6]                                       
-        else:
-                                          
-            num_grid_options = [2, 3, 4, 5, 6, 7, 8]
-            num_grid_dis =     [6, 8, 2, 0, 0, 0, 0]                                                    
-                                                                          
-            num_comp_dis = [10, 4, 0, 10, 3, 3, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10]                                                         
-            num_comp_dis_outer = [8, 4, 0, 8, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8]                                   
+    if simple_circuits:
+                                                        
+        num_grid_options = [2, 3, 4]
+        num_grid_dis =     [8, 6, 1]                                   
+                                                                        
+        num_comp_dis = [8, 3, 0, 8, 2, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8]                                                         
+        num_comp_dis_outer = [6, 3, 0, 6, 1, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6]                                       
+    else:
+                                        
+        num_grid_options = [2, 3, 4, 5, 6, 7, 8]
+        num_grid_dis =     [6, 8, 2, 0, 0, 0, 0]                                                    
+                                                                        
+        num_comp_dis = [10, 4, 0, 10, 3, 3, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10]                                                         
+        num_comp_dis_outer = [8, 4, 0, 8, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8]                                   
+    
+    num_grid_choices = []
+    for op, dis in zip(num_grid_options, num_grid_dis):
+        num_grid_choices += [op]*dis
+
+                                                                                                                                    
+                                                                                                                    
+    
+    num_comp_dis = [12,  4, 0, 15, 6, 5, 8,    1,    4,    3,    4,    0,        0,            0,      0,          0,             0]  
+                                                                                                                                            
+    num_comp_dis_outer = [10, 4, 0, 10, 1, 1, 0, 3, 3, 2, 1, 0, 0, 0, 0, 0, 0]                                     
+
+    num_comp_choices = []
+    num_comp_choices_outer = []
+                                                                                    
+    for op, dis in zip(range(18), num_comp_dis):
+        num_comp_choices += [op]*dis
+    for op, dis in zip(range(18), num_comp_dis_outer):
+        num_comp_choices_outer += [op]*dis
+
+    vertical_dis_mean, vertical_dis_std = 4.0, 0.4                                              
+    horizontal_dis_mean, horizontal_dis_std = 4.0, 0.4                                              
+
+                                                                            
+    comp_mean_value = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 10]                            
+    comp_max_value = [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 50, 50, 1, 10, 10, 50, 100]                       
+
+                                                                    
+    unit_choices = [UNIT_MODE_1]                                   
+
+    meas_dis = [20, 1, 1]                                                            
+    meas_choices = [MEAS_TYPE_NONE]*meas_dis[0] + [MEAS_TYPE_VOLTAGE]*meas_dis[1] + [MEAS_TYPE_CURRENT]*meas_dis[2]
+    meas_dir_prob = 0.5
+
+    meas_label_choices = range(-1, 10)
+
+    use_value_annotation_prob = 0.9                                                            
+
+                    
+    m = np.random.choice(num_grid_choices)
+    if m == 4:
+        num_grid_choices.remove(4)
+    n = np.random.choice(num_grid_choices)
+    vertical_dis = np.arange(m)* vertical_dis_mean + np.random.uniform(-vertical_dis_std, vertical_dis_std, size=(m,))
+    horizontal_dis = np.arange(n)* horizontal_dis_mean + np.random.uniform(-horizontal_dis_std, horizontal_dis_std, size=(n,))
+
+    while True:
+
+                                    
+        has_vedge = np.ones((m-1, n), dtype=int)
+        has_hedge = np.ones((m, n-1), dtype=int)
+
+        vcomp_type = np.zeros((m-1, n), dtype=int)
+        hcomp_type = np.zeros((m, n-1), dtype=int)
+        vcomp_label = np.zeros((m-1, n))
+        hcomp_label = np.zeros((m, n-1))
+        vcomp_value = np.zeros((m-1, n))
+        hcomp_value = np.zeros((m, n-1))
+
+        vcomp_value_unit = np.zeros((m-1, n), dtype=int)
+        hcomp_value_unit = np.zeros((m, n-1), dtype=int)
+
+        vcomp_direction = np.zeros((m-1, n), dtype=int)         
+        hcomp_direction = np.zeros((m, n-1), dtype=int)         
+
+        vcomp_measure = np.zeros((m-1, n), dtype=int)
+        hcomp_measure = np.zeros((m, n-1), dtype=int)
+
+        vcomp_measure_label = np.zeros((m-1, n))
+        hcomp_measure_label = np.zeros((m, n-1))
+
+        vcomp_measure_direction = np.zeros((m-1, n), dtype=int)         
+        hcomp_measure_direction = np.zeros((m, n-1), dtype=int)         
+
+        vcomp_control_meas_label = np.zeros((m-1, n))   
+        hcomp_control_meas_label = np.zeros((m, n-1))
+
+                            
+        comp_cnt = [0] * 18                                                 
+        meas_label_stat = {
+            MEAS_TYPE_NONE: [],
+            MEAS_TYPE_VOLTAGE: [],
+            MEAS_TYPE_CURRENT: []
+        }
+
+                                            
+        VC_sources = {'v': [], 'h': []}
+        IC_sources = {'v': [], 'h': []}
+        print(f"has_vedge: {has_vedge}\n\nhas_hedge: {has_hedge}")
+
+        for i in range(m-1):
+            for j in range(n):
+                if j == 0 or j == n-1:
+                    vcomp_type[i][j] = np.random.choice(num_comp_choices_outer)
+                else:
+                    vcomp_type[i][j] = np.random.choice(num_comp_choices)
+
+                if vcomp_type[i][j] in [TYPE_VCCS, TYPE_VCVS]:
+                    VC_sources["v"].append((i, j))
+                if vcomp_type[i][j] in [TYPE_CCCS, TYPE_CCVS]:
+                    IC_sources["v"].append((i, j))
+                if vcomp_type[i][j] == TYPE_OPEN:
+                    has_vedge[i][j] = 0
+                    continue
+
+                vcomp_value[i][j] = np.random.randint(comp_mean_value[vcomp_type[i][j]], comp_max_value[vcomp_type[i][j]])
+                vcomp_value_unit[i][j] = np.random.choice(unit_choices)
+
+                comp_cnt[vcomp_type[i][j]] += 1
+                vcomp_label[i][j] = comp_cnt[vcomp_type[i][j]]
+
+                                                                        
+                proposed_measure = np.random.choice(meas_choices)
+                proposed_label = int(np.random.choice(meas_label_choices))
+                if vcomp_type[i][j] in [TYPE_VCCS, TYPE_VCVS, TYPE_CCCS, TYPE_CCVS]:
+                    vcomp_measure[i][j] = MEAS_TYPE_NONE
+                    vcomp_measure_label[i][j] = -1
+                else:
+                    vcomp_measure[i][j] = proposed_measure
+                    vcomp_measure_label[i][j] = proposed_label
+                    meas_label_stat[proposed_measure].append(proposed_label)
+                vcomp_direction[i][j] = int(random.random() < meas_dir_prob)
+
+                print(f"\n\nvcomp_type[{i}][{j}]: {vcomp_type[i][j]}, vcomp_value[{i}][{j}]: {vcomp_value[i][j]}, vcomp_value_unit[{i}][{j}]: {vcomp_value_unit[i][j]}")
+                print(f"vcomp_measure[{i}][{j}]: {vcomp_measure[i][j]}, vcomp_measure_label[{i}][{j}]: {vcomp_measure_label[i][j]}, vcomp_direction[{i}][{j}]: {vcomp_direction[i][j]}")
+        for i in range(m):
+            for j in range(n-1):
+                if i == 0 or i == m-1:
+                    hcomp_type[i][j] = np.random.choice(num_comp_choices_outer)
+                else:
+                    hcomp_type[i][j] = np.random.choice(num_comp_choices)
+
+                if hcomp_type[i][j] in [TYPE_VCCS, TYPE_VCVS]:
+                    VC_sources["h"].append((i, j))
+                if hcomp_type[i][j] in [TYPE_CCCS, TYPE_CCVS]:
+                    IC_sources["h"].append((i, j))
+                if hcomp_type[i][j] == TYPE_OPEN:
+                    has_hedge[i][j] = 0
+                    continue
+                
+                hcomp_value[i][j] = np.random.randint(comp_mean_value[hcomp_type[i][j]], comp_max_value[hcomp_type[i][j]])
+                hcomp_value_unit[i][j] = np.random.choice(unit_choices)
+
+                comp_cnt[hcomp_type[i][j]] += 1
+                hcomp_label[i][j] = comp_cnt[hcomp_type[i][j]]
+
+                                                                        
+                proposed_measure_h = np.random.choice(meas_choices)
+                proposed_label_h = int(np.random.choice(meas_label_choices))
+                if hcomp_type[i][j] in [TYPE_VCCS, TYPE_VCVS, TYPE_CCCS, TYPE_CCVS]:
+                    hcomp_measure[i][j] = MEAS_TYPE_NONE
+                    hcomp_measure_label[i][j] = -1
+                else:
+                    hcomp_measure[i][j] = proposed_measure_h
+                    hcomp_measure_label[i][j] = proposed_label_h
+                    meas_label_stat[proposed_measure_h].append(proposed_label_h)
+                hcomp_direction[i][j] = int(random.random() < meas_dir_prob)
+
+                print(f"\n\nhcomp_type[{i}][{j}]: {hcomp_type[i][j]}, hcomp_value[{i}][{j}]: {hcomp_value[i][j]}, hcomp_value_unit[{i}][{j}]: {hcomp_value_unit[i][j]}")
+                print(f"hcomp_measure[{i}][{j}]: {hcomp_measure[i][j]}, hcomp_measure_label[{i}][{j}]: {hcomp_measure_label[i][j]}, hcomp_direction[{i}][{j}]: {hcomp_direction[i][j]}")
         
-        num_grid_choices = []
-        for op, dis in zip(num_grid_options, num_grid_dis):
-            num_grid_choices += [op]*dis
- 
-                                                                                                                                     
-                                                                                                                     
-        
-        num_comp_dis = [12,  4, 0, 15, 6, 5, 8,    1,    4,    3,    4,    0,        0,            0,      0,          0,             0]  
-                                                                                                                                              
-        num_comp_dis_outer = [10, 4, 0, 10, 1, 1, 0, 3, 3, 2, 1, 0, 0, 0, 0, 0, 0]                                     
+                                    
+        num_vc_sources = len(VC_sources["v"]) + len(VC_sources["h"])
+        num_ic_sources = len(IC_sources["v"]) + len(IC_sources["h"])
+        num_vmeas = len(meas_label_stat[MEAS_TYPE_VOLTAGE])
+        num_imeas = len(meas_label_stat[MEAS_TYPE_CURRENT])
 
-        num_comp_choices = []
-        num_comp_choices_outer = []
-                                                                                      
-        for op, dis in zip(range(18), num_comp_dis):
-            num_comp_choices += [op]*dis
-        for op, dis in zip(range(18), num_comp_dis_outer):
-            num_comp_choices_outer += [op]*dis
+                                                            
+        total_dep_sources = num_vc_sources + num_ic_sources
+        if total_dep_sources < 1 or total_dep_sources > 2:
+            continue
 
-        vertical_dis_mean, vertical_dis_std = 4.0, 0.4                                              
-        horizontal_dis_mean, horizontal_dis_std = 4.0, 0.4                                              
+        if (num_vc_sources > 0 and num_vmeas == 0) or (num_ic_sources > 0 and num_imeas == 0):
+            continue
 
+        print("VC_sources: ", VC_sources)
+        print("IC_sources: ", IC_sources)
+        print("meas_label_stat: ", meas_label_stat)
+
+        for i, j in VC_sources["v"]:
+            contrl_idx = random.choice(meas_label_stat[MEAS_TYPE_VOLTAGE])
+            vcomp_control_meas_label[i][j] = contrl_idx
+        for i, j in VC_sources["h"]:
+            contrl_idx = random.choice(meas_label_stat[MEAS_TYPE_VOLTAGE])
+            hcomp_control_meas_label[i][j] = contrl_idx
+        for i, j in IC_sources["v"]:
+            contrl_idx = random.choice(meas_label_stat[MEAS_TYPE_CURRENT])
+            vcomp_control_meas_label[i][j] = contrl_idx
+        for i, j in IC_sources["h"]:
+            contrl_idx = random.choice(meas_label_stat[MEAS_TYPE_CURRENT])
+            hcomp_control_meas_label[i][j] = contrl_idx
+                                                                        
+                                                                        
+                                                                            
+        if rlc:
+                                                                
+            has_reactive = False
+            for ii in range(m-1):
+                for jj in range(n):
+                    if vcomp_type[ii][jj] in [TYPE_CAPACITOR, TYPE_INDUCTOR]:
+                        has_reactive = True
+                        break
+                if has_reactive:
+                    break
+            if not has_reactive:
+                                                                    
+                candidate_edges = [('v', ii, jj) for ii in range(m-1) for jj in range(n) if has_vedge[ii][jj] and vcomp_type[ii][jj] == TYPE_RESISTOR] + \
+                                    [('h', ii, jj) for ii in range(m) for jj in range(n-1) if has_hedge[ii][jj] and hcomp_type[ii][jj] == TYPE_RESISTOR]
+                if candidate_edges:
+                    chosen_edge = random.choice(candidate_edges)
+                    make_type = random.choice([TYPE_CAPACITOR, TYPE_INDUCTOR])
+                    if chosen_edge[0] == 'v':
+                        ii, jj = chosen_edge[1], chosen_edge[2]
+                        vcomp_type[ii][jj] = make_type
+                        vcomp_value[ii][jj] = np.random.randint(comp_mean_value[make_type], comp_max_value[make_type])
+                        print(f"Promoted resistor at vedge ({ii},{jj}) to {'C' if make_type==TYPE_CAPACITOR else 'L'} for RLC mode")
+                    else:
+                        ii, jj = chosen_edge[1], chosen_edge[2]
+                        hcomp_type[ii][jj] = make_type
+                        hcomp_value[ii][jj] = np.random.randint(comp_mean_value[make_type], comp_max_value[make_type])
+                        print(f"Promoted resistor at hedge ({ii},{jj}) to {'C' if make_type==TYPE_CAPACITOR else 'L'} for RLC mode")
+
+        break
+    
+                                    
+    use_value_annotation = bool(random.random() < use_value_annotation_prob)
                                                                                 
-        comp_mean_value = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 10]                            
-        comp_max_value = [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 50, 50, 1, 10, 10, 50, 100]                       
-
-                                                                       
-        unit_choices = [UNIT_MODE_1]                                   
-
-        meas_dis = [20, 1, 1]                                                            
-        meas_choices = [MEAS_TYPE_NONE]*meas_dis[0] + [MEAS_TYPE_VOLTAGE]*meas_dis[1] + [MEAS_TYPE_CURRENT]*meas_dis[2]
-        meas_dir_prob = 0.5
-
-        meas_label_choices = range(-1, 10)
-
-        use_value_annotation_prob = 0.9                                                            
-
-                      
-        m = np.random.choice(num_grid_choices)
-        if m == 4:
-            num_grid_choices.remove(4)
-        n = np.random.choice(num_grid_choices)
-        vertical_dis = np.arange(m)* vertical_dis_mean + np.random.uniform(-vertical_dis_std, vertical_dis_std, size=(m,))
-        horizontal_dis = np.arange(n)* horizontal_dis_mean + np.random.uniform(-horizontal_dis_std, horizontal_dis_std, size=(n,))
-
-        while True:
-
-                                     
-            has_vedge = np.ones((m-1, n), dtype=int)
-            has_hedge = np.ones((m, n-1), dtype=int)
-
-            vcomp_type = np.zeros((m-1, n), dtype=int)
-            hcomp_type = np.zeros((m, n-1), dtype=int)
-            vcomp_label = np.zeros((m-1, n))
-            hcomp_label = np.zeros((m, n-1))
-            vcomp_value = np.zeros((m-1, n))
-            hcomp_value = np.zeros((m, n-1))
-
-            vcomp_value_unit = np.zeros((m-1, n), dtype=int)
-            hcomp_value_unit = np.zeros((m, n-1), dtype=int)
-
-            vcomp_direction = np.zeros((m-1, n), dtype=int)         
-            hcomp_direction = np.zeros((m, n-1), dtype=int)         
-
-            vcomp_measure = np.zeros((m-1, n), dtype=int)
-            hcomp_measure = np.zeros((m, n-1), dtype=int)
-
-            vcomp_measure_label = np.zeros((m-1, n))
-            hcomp_measure_label = np.zeros((m, n-1))
-
-            vcomp_measure_direction = np.zeros((m-1, n), dtype=int)         
-            hcomp_measure_direction = np.zeros((m, n-1), dtype=int)         
-
-            vcomp_control_meas_label = np.zeros((m-1, n))   
-            hcomp_control_meas_label = np.zeros((m, n-1))
+    label_str_subscript = False
+    label_numerical_subscript = not label_str_subscript
 
                                 
-            comp_cnt = [0] * 18                                                 
-            meas_label_stat = {
-                MEAS_TYPE_NONE: [],
-                MEAS_TYPE_VOLTAGE: [],
-                MEAS_TYPE_CURRENT: []
-            }
+    vcomp_type = vcomp_type.astype(int)
+    hcomp_type = hcomp_type.astype(int)
+    vcomp_label = vcomp_label.astype(int)
+    hcomp_label = hcomp_label.astype(int)
+    vcomp_value = vcomp_value.astype(int)
+    hcomp_value = hcomp_value.astype(int)
+    vcomp_value_unit = vcomp_value_unit.astype(int)
+    hcomp_value_unit = hcomp_value_unit.astype(int)
+    vcomp_measure = vcomp_measure.astype(int)
+    hcomp_measure = hcomp_measure.astype(int)
+    vcomp_measure_label = vcomp_measure_label.astype(int)
+    hcomp_measure_label = hcomp_measure_label.astype(int)
+    vcomp_measure_direction = vcomp_measure_direction.astype(int)
+    hcomp_measure_direction = hcomp_measure_direction.astype(int)
+    vcomp_control_meas_label = vcomp_control_meas_label.astype(int)
+    hcomp_control_meas_label = hcomp_control_meas_label.astype(int)
 
-                                             
-            VC_sources = {'v': [], 'h': []}
-            IC_sources = {'v': [], 'h': []}
-            print(f"has_vedge: {has_vedge}\n\nhas_hedge: {has_hedge}")
+    print("#"*100)
+    print("Generate a random grid for circuit ... ")
+    print(f"has_vedge: {has_vedge}\n\nhas_hedge: {has_hedge}")
+    print(f"vertical_dis: {vertical_dis}\n\nhorizontal_dis: {horizontal_dis}")
+    print(f"m:{m}, n:{n}\n\ncomp_cnt: {json.dumps(comp_cnt, indent=4)}")
+    print(f"use_value_annotation: {use_value_annotation}\nlabel_numerical_subscript: {label_numerical_subscript}")
 
-            for i in range(m-1):
-                for j in range(n):
-                    if j == 0 or j == n-1:
-                        vcomp_type[i][j] = np.random.choice(num_comp_choices_outer)
-                    else:
-                        vcomp_type[i][j] = np.random.choice(num_comp_choices)
+    print(f"vcomp_type: {vcomp_type}\n\nhcomp_type: {hcomp_type}")
+    print(f"vcomp_label: {vcomp_label}\n\nhcomp_label: {hcomp_label}")
+    print(f"vcomp_value: {vcomp_value}\n\nhcomp_value: {hcomp_value}")
+    print(f"vcomp_value_unit: {vcomp_value_unit}\n\nhcomp_value_unit: {hcomp_value_unit}")
+    print(f"vcomp_measure: {vcomp_measure}\n\nhcomp_measure: {hcomp_measure}")
+    print(f"vcomp_measure_label: {vcomp_measure_label}\n\nhcomp_measure_label: {hcomp_measure_label}")
+    print(f"vcomp_measure_direction: {vcomp_measure_direction}\n\nhcomp_measure_direction: {hcomp_measure_direction}")
+    print(f"vcomp_control_meas_label: {vcomp_control_meas_label}\n\nhcomp_control_meas_label: {hcomp_control_meas_label}")
 
-                    if vcomp_type[i][j] in [TYPE_VCCS, TYPE_VCVS]:
-                        VC_sources["v"].append((i, j))
-                    if vcomp_type[i][j] in [TYPE_CCCS, TYPE_CCVS]:
-                        IC_sources["v"].append((i, j))
-                    if vcomp_type[i][j] == TYPE_OPEN:
-                        has_vedge[i][j] = 0
-                        continue
-
-                    vcomp_value[i][j] = np.random.randint(comp_mean_value[vcomp_type[i][j]], comp_max_value[vcomp_type[i][j]])
-                    vcomp_value_unit[i][j] = np.random.choice(unit_choices)
-
-                    comp_cnt[vcomp_type[i][j]] += 1
-                    vcomp_label[i][j] = comp_cnt[vcomp_type[i][j]]
-
-                                                                            
-                    proposed_measure = np.random.choice(meas_choices)
-                    proposed_label = int(np.random.choice(meas_label_choices))
-                    if vcomp_type[i][j] in [TYPE_VCCS, TYPE_VCVS, TYPE_CCCS, TYPE_CCVS]:
-                        vcomp_measure[i][j] = MEAS_TYPE_NONE
-                        vcomp_measure_label[i][j] = -1
-                    else:
-                        vcomp_measure[i][j] = proposed_measure
-                        vcomp_measure_label[i][j] = proposed_label
-                        meas_label_stat[proposed_measure].append(proposed_label)
-                    vcomp_direction[i][j] = int(random.random() < meas_dir_prob)
-
-                    print(f"\n\nvcomp_type[{i}][{j}]: {vcomp_type[i][j]}, vcomp_value[{i}][{j}]: {vcomp_value[i][j]}, vcomp_value_unit[{i}][{j}]: {vcomp_value_unit[i][j]}")
-                    print(f"vcomp_measure[{i}][{j}]: {vcomp_measure[i][j]}, vcomp_measure_label[{i}][{j}]: {vcomp_measure_label[i][j]}, vcomp_direction[{i}][{j}]: {vcomp_direction[i][j]}")
-            for i in range(m):
-                for j in range(n-1):
-                    if i == 0 or i == m-1:
-                        hcomp_type[i][j] = np.random.choice(num_comp_choices_outer)
-                    else:
-                        hcomp_type[i][j] = np.random.choice(num_comp_choices)
-
-                    if hcomp_type[i][j] in [TYPE_VCCS, TYPE_VCVS]:
-                        VC_sources["h"].append((i, j))
-                    if hcomp_type[i][j] in [TYPE_CCCS, TYPE_CCVS]:
-                        IC_sources["h"].append((i, j))
-                    if hcomp_type[i][j] == TYPE_OPEN:
-                        has_hedge[i][j] = 0
-                        continue
-                    
-                    hcomp_value[i][j] = np.random.randint(comp_mean_value[hcomp_type[i][j]], comp_max_value[hcomp_type[i][j]])
-                    hcomp_value_unit[i][j] = np.random.choice(unit_choices)
-
-                    comp_cnt[hcomp_type[i][j]] += 1
-                    hcomp_label[i][j] = comp_cnt[hcomp_type[i][j]]
-
-                                                                            
-                    proposed_measure_h = np.random.choice(meas_choices)
-                    proposed_label_h = int(np.random.choice(meas_label_choices))
-                    if hcomp_type[i][j] in [TYPE_VCCS, TYPE_VCVS, TYPE_CCCS, TYPE_CCVS]:
-                        hcomp_measure[i][j] = MEAS_TYPE_NONE
-                        hcomp_measure_label[i][j] = -1
-                    else:
-                        hcomp_measure[i][j] = proposed_measure_h
-                        hcomp_measure_label[i][j] = proposed_label_h
-                        meas_label_stat[proposed_measure_h].append(proposed_label_h)
-                    hcomp_direction[i][j] = int(random.random() < meas_dir_prob)
-
-                    print(f"\n\nhcomp_type[{i}][{j}]: {hcomp_type[i][j]}, hcomp_value[{i}][{j}]: {hcomp_value[i][j]}, hcomp_value_unit[{i}][{j}]: {hcomp_value_unit[i][j]}")
-                    print(f"hcomp_measure[{i}][{j}]: {hcomp_measure[i][j]}, hcomp_measure_label[{i}][{j}]: {hcomp_measure_label[i][j]}, hcomp_direction[{i}][{j}]: {hcomp_direction[i][j]}")
-            
-                                      
-            num_vc_sources = len(VC_sources["v"]) + len(VC_sources["h"])
-            num_ic_sources = len(IC_sources["v"]) + len(IC_sources["h"])
-            num_vmeas = len(meas_label_stat[MEAS_TYPE_VOLTAGE])
-            num_imeas = len(meas_label_stat[MEAS_TYPE_CURRENT])
-
-                                                             
-            total_dep_sources = num_vc_sources + num_ic_sources
-            if total_dep_sources < 1 or total_dep_sources > 2:
-                continue
-
-            if (num_vc_sources > 0 and num_vmeas == 0) or (num_ic_sources > 0 and num_imeas == 0):
-                continue
-
-            print("VC_sources: ", VC_sources)
-            print("IC_sources: ", IC_sources)
-            print("meas_label_stat: ", meas_label_stat)
-
-            for i, j in VC_sources["v"]:
-                contrl_idx = random.choice(meas_label_stat[MEAS_TYPE_VOLTAGE])
-                vcomp_control_meas_label[i][j] = contrl_idx
-            for i, j in VC_sources["h"]:
-                contrl_idx = random.choice(meas_label_stat[MEAS_TYPE_VOLTAGE])
-                hcomp_control_meas_label[i][j] = contrl_idx
-            for i, j in IC_sources["v"]:
-                contrl_idx = random.choice(meas_label_stat[MEAS_TYPE_CURRENT])
-                vcomp_control_meas_label[i][j] = contrl_idx
-            for i, j in IC_sources["h"]:
-                contrl_idx = random.choice(meas_label_stat[MEAS_TYPE_CURRENT])
-                hcomp_control_meas_label[i][j] = contrl_idx
-                                                                          
-                                                                           
-                                                                              
-            if rlc:
-                                                                  
-                has_reactive = False
-                for ii in range(m-1):
-                    for jj in range(n):
-                        if vcomp_type[ii][jj] in [TYPE_CAPACITOR, TYPE_INDUCTOR]:
-                            has_reactive = True
-                            break
-                    if has_reactive:
-                        break
-                if not has_reactive:
                                                                         
-                    candidate_edges = [('v', ii, jj) for ii in range(m-1) for jj in range(n) if has_vedge[ii][jj] and vcomp_type[ii][jj] == TYPE_RESISTOR] + \
-                                      [('h', ii, jj) for ii in range(m) for jj in range(n-1) if has_hedge[ii][jj] and hcomp_type[ii][jj] == TYPE_RESISTOR]
-                    if candidate_edges:
-                        chosen_edge = random.choice(candidate_edges)
-                        make_type = random.choice([TYPE_CAPACITOR, TYPE_INDUCTOR])
-                        if chosen_edge[0] == 'v':
-                            ii, jj = chosen_edge[1], chosen_edge[2]
-                            vcomp_type[ii][jj] = make_type
-                            vcomp_value[ii][jj] = np.random.randint(comp_mean_value[make_type], comp_max_value[make_type])
-                            print(f"Promoted resistor at vedge ({ii},{jj}) to {'C' if make_type==TYPE_CAPACITOR else 'L'} for RLC mode")
-                        else:
-                            ii, jj = chosen_edge[1], chosen_edge[2]
-                            hcomp_type[ii][jj] = make_type
-                            hcomp_value[ii][jj] = np.random.randint(comp_mean_value[make_type], comp_max_value[make_type])
-                            print(f"Promoted resistor at hedge ({ii},{jj}) to {'C' if make_type==TYPE_CAPACITOR else 'L'} for RLC mode")
-
-            break
-        
-                                      
-        use_value_annotation = bool(random.random() < use_value_annotation_prob)
-                                                                                   
-        label_str_subscript = False
-        label_numerical_subscript = not label_str_subscript
-
-                                   
-        vcomp_type = vcomp_type.astype(int)
-        hcomp_type = hcomp_type.astype(int)
-        vcomp_label = vcomp_label.astype(int)
-        hcomp_label = hcomp_label.astype(int)
-        vcomp_value = vcomp_value.astype(int)
-        hcomp_value = hcomp_value.astype(int)
-        vcomp_value_unit = vcomp_value_unit.astype(int)
-        hcomp_value_unit = hcomp_value_unit.astype(int)
-        vcomp_measure = vcomp_measure.astype(int)
-        hcomp_measure = hcomp_measure.astype(int)
-        vcomp_measure_label = vcomp_measure_label.astype(int)
-        hcomp_measure_label = hcomp_measure_label.astype(int)
-        vcomp_measure_direction = vcomp_measure_direction.astype(int)
-        hcomp_measure_direction = hcomp_measure_direction.astype(int)
-        vcomp_control_meas_label = vcomp_control_meas_label.astype(int)
-        hcomp_control_meas_label = hcomp_control_meas_label.astype(int)
-
-        print("#"*100)
-        print("Generate a random grid for circuit ... ")
-        print(f"has_vedge: {has_vedge}\n\nhas_hedge: {has_hedge}")
-        print(f"vertical_dis: {vertical_dis}\n\nhorizontal_dis: {horizontal_dis}")
-        print(f"m:{m}, n:{n}\n\ncomp_cnt: {json.dumps(comp_cnt, indent=4)}")
-        print(f"use_value_annotation: {use_value_annotation}\nlabel_numerical_subscript: {label_numerical_subscript}")
-
-        print(f"vcomp_type: {vcomp_type}\n\nhcomp_type: {hcomp_type}")
-        print(f"vcomp_label: {vcomp_label}\n\nhcomp_label: {hcomp_label}")
-        print(f"vcomp_value: {vcomp_value}\n\nhcomp_value: {hcomp_value}")
-        print(f"vcomp_value_unit: {vcomp_value_unit}\n\nhcomp_value_unit: {hcomp_value_unit}")
-        print(f"vcomp_measure: {vcomp_measure}\n\nhcomp_measure: {hcomp_measure}")
-        print(f"vcomp_measure_label: {vcomp_measure_label}\n\nhcomp_measure_label: {hcomp_measure_label}")
-        print(f"vcomp_measure_direction: {vcomp_measure_direction}\n\nhcomp_measure_direction: {hcomp_measure_direction}")
-        print(f"vcomp_control_meas_label: {vcomp_control_meas_label}\n\nhcomp_control_meas_label: {hcomp_control_meas_label}")
-
+                                                                        
+                                        
+                                                                            
+                                                
                                                                             
                                                                             
-                                          
-                                                                              
-                                                   
-                                                                              
-                                                                             
-                                                                             
-                                 
                                                                             
+                                
+                                                                        
 
-                                           
-        for ii in range(m-1):
-            for jj in range(n):
-                if vcomp_type[ii][jj] == TYPE_CURRENT_SOURCE:
-                    vcomp_type[ii][jj] = TYPE_RESISTOR
-                    vcomp_value[ii][jj] = np.random.randint(comp_mean_value[TYPE_RESISTOR], comp_max_value[TYPE_RESISTOR])
-                    print(f"Converted current source at vedge ({ii},{jj}) to resistor")
-        for ii in range(m):
-            for jj in range(n-1):
-                if hcomp_type[ii][jj] == TYPE_CURRENT_SOURCE:
-                    hcomp_type[ii][jj] = TYPE_RESISTOR
-                    hcomp_value[ii][jj] = np.random.randint(comp_mean_value[TYPE_RESISTOR], comp_max_value[TYPE_RESISTOR])
-                    print(f"Converted current source at hedge ({ii},{jj}) to resistor")
+                                        
+    for ii in range(m-1):
+        for jj in range(n):
+            if vcomp_type[ii][jj] == TYPE_CURRENT_SOURCE:
+                vcomp_type[ii][jj] = TYPE_RESISTOR
+                vcomp_value[ii][jj] = np.random.randint(comp_mean_value[TYPE_RESISTOR], comp_max_value[TYPE_RESISTOR])
+                print(f"Converted current source at vedge ({ii},{jj}) to resistor")
+    for ii in range(m):
+        for jj in range(n-1):
+            if hcomp_type[ii][jj] == TYPE_CURRENT_SOURCE:
+                hcomp_type[ii][jj] = TYPE_RESISTOR
+                hcomp_value[ii][jj] = np.random.randint(comp_mean_value[TYPE_RESISTOR], comp_max_value[TYPE_RESISTOR])
+                print(f"Converted current source at hedge ({ii},{jj}) to resistor")
 
-                                                  
-        voltage_positions = []                                  
-        for ii in range(m-1):
-            for jj in range(n):
-                if vcomp_type[ii][jj] == TYPE_VOLTAGE_SOURCE:
-                    voltage_positions.append(('v', ii, jj))
-        for ii in range(m):
-            for jj in range(n-1):
-                if hcomp_type[ii][jj] == TYPE_VOLTAGE_SOURCE:
-                    voltage_positions.append(('h', ii, jj))
+                                                
+    voltage_positions = []                                  
+    for ii in range(m-1):
+        for jj in range(n):
+            if vcomp_type[ii][jj] == TYPE_VOLTAGE_SOURCE:
+                voltage_positions.append(('v', ii, jj))
+    for ii in range(m):
+        for jj in range(n-1):
+            if hcomp_type[ii][jj] == TYPE_VOLTAGE_SOURCE:
+                voltage_positions.append(('h', ii, jj))
 
-        if len(voltage_positions) == 0:
+    if len(voltage_positions) == 0:
+                                                            
+        candidate_edges = [('v', ii, jj) for ii in range(m-1) for jj in range(n) if has_vedge[ii][jj] and vcomp_type[ii][jj] != TYPE_OPEN] + \
+                            [('h', ii, jj) for ii in range(m) for jj in range(n-1) if has_hedge[ii][jj] and hcomp_type[ii][jj] != TYPE_OPEN]
+        if candidate_edges:
+            chosen_edge = random.choice(candidate_edges)
+            if chosen_edge[0] == 'v':
+                ii, jj = chosen_edge[1], chosen_edge[2]
+                vcomp_type[ii][jj] = TYPE_VOLTAGE_SOURCE
+                vcomp_value[ii][jj] = np.random.randint(comp_mean_value[TYPE_VOLTAGE_SOURCE], comp_max_value[TYPE_VOLTAGE_SOURCE])
+                print(f"Promoted edge at vedge ({ii},{jj}) to voltage source")
+            else:
+                ii, jj = chosen_edge[1], chosen_edge[2]
+                hcomp_type[ii][jj] = TYPE_VOLTAGE_SOURCE
+                hcomp_value[ii][jj] = np.random.randint(comp_mean_value[TYPE_VOLTAGE_SOURCE], comp_max_value[TYPE_VOLTAGE_SOURCE])
+                print(f"Promoted edge at hedge ({ii},{jj}) to voltage source")
+    elif len(voltage_positions) > 1:
+                                                                        
+        keep = voltage_positions[0]
+        for pos in voltage_positions[1:]:
+            if pos[0] == 'v':
+                vcomp_type[pos[1]][pos[2]] = TYPE_RESISTOR
+                vcomp_value[pos[1]][pos[2]] = np.random.randint(comp_mean_value[TYPE_RESISTOR], comp_max_value[TYPE_RESISTOR])
+                print(f"Demoted extra voltage source at vedge ({pos[1]},{pos[2]}) to resistor")
+            else:
+                hcomp_type[pos[1]][pos[2]] = TYPE_RESISTOR
+                hcomp_value[pos[1]][pos[2]] = np.random.randint(comp_mean_value[TYPE_RESISTOR], comp_max_value[TYPE_RESISTOR])
+                print(f"Demoted extra voltage source at hedge ({pos[1]},{pos[2]}) to resistor")
+
+    print(f"Voltage source constraint enforced: {len(voltage_positions)} initial voltage sources found")
+
+                                                                                
+    reassign_unique_labels(vcomp_type, hcomp_type, vcomp_label, hcomp_label, m, n)
+    print("Component labels reassigned to ensure uniqueness")
+
+                                                                        
                                                                 
-            candidate_edges = [('v', ii, jj) for ii in range(m-1) for jj in range(n) if has_vedge[ii][jj] and vcomp_type[ii][jj] != TYPE_OPEN] + \
-                              [('h', ii, jj) for ii in range(m) for jj in range(n-1) if has_hedge[ii][jj] and hcomp_type[ii][jj] != TYPE_OPEN]
+                                                                        
+    if integrator:
+                                                
+        integrator_positions = []                                  
+        for ii in range(m-1):
+            for jj in range(n):
+                if vcomp_type[ii][jj] == TYPE_OPAMP_INTEGRATOR:
+                    integrator_positions.append(('v', ii, jj))
+        for ii in range(m):
+            for jj in range(n-1):
+                if hcomp_type[ii][jj] == TYPE_OPAMP_INTEGRATOR:
+                    integrator_positions.append(('h', ii, jj))
+
+        if len(integrator_positions) == 0:
+                                                                    
+            candidate_edges = [('v', ii, jj) for ii in range(m-1) for jj in range(n) if has_vedge[ii][jj] and vcomp_type[ii][jj] == TYPE_RESISTOR] + \
+                                [('h', ii, jj) for ii in range(m) for jj in range(n-1) if has_hedge[ii][jj] and hcomp_type[ii][jj] == TYPE_RESISTOR]
             if candidate_edges:
                 chosen_edge = random.choice(candidate_edges)
                 if chosen_edge[0] == 'v':
                     ii, jj = chosen_edge[1], chosen_edge[2]
-                    vcomp_type[ii][jj] = TYPE_VOLTAGE_SOURCE
-                    vcomp_value[ii][jj] = np.random.randint(comp_mean_value[TYPE_VOLTAGE_SOURCE], comp_max_value[TYPE_VOLTAGE_SOURCE])
-                    print(f"Promoted edge at vedge ({ii},{jj}) to voltage source")
+                    vcomp_type[ii][jj] = TYPE_OPAMP_INTEGRATOR
+                    vcomp_value[ii][jj] = np.random.randint(comp_mean_value[TYPE_RESISTOR], comp_max_value[TYPE_RESISTOR])
+                    print(f"Promoted resistor at vedge ({ii},{jj}) to integrator")
                 else:
                     ii, jj = chosen_edge[1], chosen_edge[2]
-                    hcomp_type[ii][jj] = TYPE_VOLTAGE_SOURCE
-                    hcomp_value[ii][jj] = np.random.randint(comp_mean_value[TYPE_VOLTAGE_SOURCE], comp_max_value[TYPE_VOLTAGE_SOURCE])
-                    print(f"Promoted edge at hedge ({ii},{jj}) to voltage source")
-        elif len(voltage_positions) > 1:
-                                                                            
-            keep = voltage_positions[0]
-            for pos in voltage_positions[1:]:
+                    hcomp_type[ii][jj] = TYPE_OPAMP_INTEGRATOR
+                    hcomp_value[ii][jj] = np.random.randint(comp_mean_value[TYPE_RESISTOR], comp_max_value[TYPE_RESISTOR])
+                    print(f"Promoted resistor at hedge ({ii},{jj}) to integrator")
+        elif len(integrator_positions) > 1:
+                                                                        
+            keep = integrator_positions[0]
+            for pos in integrator_positions[1:]:
                 if pos[0] == 'v':
                     vcomp_type[pos[1]][pos[2]] = TYPE_RESISTOR
                     vcomp_value[pos[1]][pos[2]] = np.random.randint(comp_mean_value[TYPE_RESISTOR], comp_max_value[TYPE_RESISTOR])
-                    print(f"Demoted extra voltage source at vedge ({pos[1]},{pos[2]}) to resistor")
+                    print(f"Demoted extra integrator at vedge ({pos[1]},{pos[2]}) to resistor")
                 else:
                     hcomp_type[pos[1]][pos[2]] = TYPE_RESISTOR
                     hcomp_value[pos[1]][pos[2]] = np.random.randint(comp_mean_value[TYPE_RESISTOR], comp_max_value[TYPE_RESISTOR])
-                    print(f"Demoted extra voltage source at hedge ({pos[1]},{pos[2]}) to resistor")
+                    print(f"Demoted extra integrator at hedge ({pos[1]},{pos[2]}) to resistor")
 
-        print(f"Voltage source constraint enforced: {len(voltage_positions)} initial voltage sources found")
+        print(f"Integrator constraint enforced: {len(integrator_positions)} initial integrators found")
 
-                                                                                 
-        reassign_unique_labels(vcomp_type, hcomp_type, vcomp_label, hcomp_label, m, n)
-        print("Component labels reassigned to ensure uniqueness")
-
-                                                                            
                                                                     
-                                                                            
-        if integrator:
-                                                  
-            integrator_positions = []                                  
-            for ii in range(m-1):
-                for jj in range(n):
-                    if vcomp_type[ii][jj] == TYPE_OPAMP_INTEGRATOR:
-                        integrator_positions.append(('v', ii, jj))
-            for ii in range(m):
-                for jj in range(n-1):
-                    if hcomp_type[ii][jj] == TYPE_OPAMP_INTEGRATOR:
-                        integrator_positions.append(('h', ii, jj))
+        reassign_unique_labels(vcomp_type, hcomp_type, vcomp_label, hcomp_label, m, n)
+        print("Component labels reassigned after integrator enforcement")
 
-            if len(integrator_positions) == 0:
-                                                                     
-                candidate_edges = [('v', ii, jj) for ii in range(m-1) for jj in range(n) if has_vedge[ii][jj] and vcomp_type[ii][jj] == TYPE_RESISTOR] + \
-                                  [('h', ii, jj) for ii in range(m) for jj in range(n-1) if has_hedge[ii][jj] and hcomp_type[ii][jj] == TYPE_RESISTOR]
-                if candidate_edges:
-                    chosen_edge = random.choice(candidate_edges)
-                    if chosen_edge[0] == 'v':
-                        ii, jj = chosen_edge[1], chosen_edge[2]
-                        vcomp_type[ii][jj] = TYPE_OPAMP_INTEGRATOR
-                        vcomp_value[ii][jj] = np.random.randint(comp_mean_value[TYPE_RESISTOR], comp_max_value[TYPE_RESISTOR])
-                        print(f"Promoted resistor at vedge ({ii},{jj}) to integrator")
-                    else:
-                        ii, jj = chosen_edge[1], chosen_edge[2]
-                        hcomp_type[ii][jj] = TYPE_OPAMP_INTEGRATOR
-                        hcomp_value[ii][jj] = np.random.randint(comp_mean_value[TYPE_RESISTOR], comp_max_value[TYPE_RESISTOR])
-                        print(f"Promoted resistor at hedge ({ii},{jj}) to integrator")
-            elif len(integrator_positions) > 1:
-                                                                            
-                keep = integrator_positions[0]
-                for pos in integrator_positions[1:]:
-                    if pos[0] == 'v':
-                        vcomp_type[pos[1]][pos[2]] = TYPE_RESISTOR
-                        vcomp_value[pos[1]][pos[2]] = np.random.randint(comp_mean_value[TYPE_RESISTOR], comp_max_value[TYPE_RESISTOR])
-                        print(f"Demoted extra integrator at vedge ({pos[1]},{pos[2]}) to resistor")
-                    else:
-                        hcomp_type[pos[1]][pos[2]] = TYPE_RESISTOR
-                        hcomp_value[pos[1]][pos[2]] = np.random.randint(comp_mean_value[TYPE_RESISTOR], comp_max_value[TYPE_RESISTOR])
-                        print(f"Demoted extra integrator at hedge ({pos[1]},{pos[2]}) to resistor")
+                                                                                                                                                    
+                                                                                                                        
+    if rlc:
+                                                        
+        for ii in range(m-1):
+            for jj in range(n):
+                if vcomp_type[ii][jj] == TYPE_VOLTAGE_SOURCE:
+                    vcomp_measure[ii][jj] = MEAS_TYPE_NONE
+        for ii in range(m):
+            for jj in range(n-1):
+                if hcomp_type[ii][jj] == TYPE_VOLTAGE_SOURCE:
+                    hcomp_measure[ii][jj] = MEAS_TYPE_NONE
 
-            print(f"Integrator constraint enforced: {len(integrator_positions)} initial integrators found")
-
-                                                                       
-            reassign_unique_labels(vcomp_type, hcomp_type, vcomp_label, hcomp_label, m, n)
-            print("Component labels reassigned after integrator enforcement")
-
-                                                                                                                                                     
-                                                                                                                          
-        if rlc:
-                                                            
-            for ii in range(m-1):
-                for jj in range(n):
-                    if vcomp_type[ii][jj] == TYPE_VOLTAGE_SOURCE:
-                        vcomp_measure[ii][jj] = MEAS_TYPE_NONE
-            for ii in range(m):
-                for jj in range(n-1):
-                    if hcomp_type[ii][jj] == TYPE_VOLTAGE_SOURCE:
-                        hcomp_measure[ii][jj] = MEAS_TYPE_NONE
-
-        circ = Circuit(m, n, vertical_dis, horizontal_dis, has_vedge, has_hedge, vcomp_type, hcomp_type, vcomp_label, hcomp_label, \
-                        vcomp_value=vcomp_value, hcomp_value=hcomp_value, \
-                        vcomp_value_unit=vcomp_value_unit, hcomp_value_unit=hcomp_value_unit, \
-                        vcomp_measure=vcomp_measure, hcomp_measure=hcomp_measure, \
-                        vcomp_measure_label=vcomp_measure_label, hcomp_measure_label=hcomp_measure_label, \
-                        use_value_annotation=not symbolic,
-                        note=note, id=id,
-                        vcomp_direction=vcomp_direction, hcomp_direction=hcomp_direction,
-                        vcomp_measure_direction=vcomp_measure_direction, hcomp_measure_direction=hcomp_measure_direction,
-                        vcomp_control_meas_label=vcomp_control_meas_label, hcomp_control_meas_label=hcomp_control_meas_label,
-                        label_numerical_subscript=label_numerical_subscript,
-                        rlc=rlc,
-                        no_meas=no_meas)
+    circ = Circuit(m, n, vertical_dis, horizontal_dis, has_vedge, has_hedge, vcomp_type, hcomp_type, vcomp_label, hcomp_label, \
+                    vcomp_value=vcomp_value, hcomp_value=hcomp_value, \
+                    vcomp_value_unit=vcomp_value_unit, hcomp_value_unit=hcomp_value_unit, \
+                    vcomp_measure=vcomp_measure, hcomp_measure=hcomp_measure, \
+                    vcomp_measure_label=vcomp_measure_label, hcomp_measure_label=hcomp_measure_label, \
+                    use_value_annotation=not symbolic,
+                    note=note, id=id,
+                    vcomp_direction=vcomp_direction, hcomp_direction=hcomp_direction,
+                    vcomp_measure_direction=vcomp_measure_direction, hcomp_measure_direction=hcomp_measure_direction,
+                    vcomp_control_meas_label=vcomp_control_meas_label, hcomp_control_meas_label=hcomp_control_meas_label,
+                    label_numerical_subscript=label_numerical_subscript,
+                    rlc=rlc,
+                    no_meas=no_meas)
 
     return circ

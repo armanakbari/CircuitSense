@@ -47,7 +47,6 @@ test.py
 SEPARATE*
 opamp_visualization*
 equivalence*
-convert_netlist*
 create_equation_derivation*
 backup_rule*
 inference/
@@ -70,7 +69,7 @@ scripts/sctrip*
 *.synctex.gz
 
 
-./ppm_construction/ft_vlm/
+
 ./ppm_construction/data_syn/final_working_bjt_circuit.tex
 ./ppm_construction/data_syn/improved_bjt_circuit.tex
 ./ppm_construction/data_syn/test_bjt_circuit.tex

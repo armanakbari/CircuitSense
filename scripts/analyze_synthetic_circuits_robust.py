@@ -57,19 +57,16 @@ def safe_computation_mp(func, args, timeout_seconds=30, description="computation
     elapsed = time.time() - start_time
     if error:
         if "Timeout" in error:
-            print(f"⏰ {description} timed out after {timeout_seconds}s")
+            print(f"{description} timed out after {timeout_seconds}s")
         else:
-            print(f"❌ {description} failed: {error}")
+            print(f"{description} failed: {error}")
         return None
     else:
-        print(f"✅ {description} completed in {elapsed:.1f}s")
+        print(f"{description} completed in {elapsed:.1f}s")
         return result
 
 def limit_ad_to_infinity_str(expr_str):
-\
-\
-\
-       
+  
     try:
         if expr_str is None or ('Ad' not in str(expr_str)):
             return expr_str
@@ -306,12 +303,7 @@ def _convert_matrix_to_readable(matrix_eqs, mna_obj):
             return f"Conversion Error: {str(e)}\nMatrix form:\n{str(matrix_eqs)}"
 
 def clean_netlist_for_lcapy(spice_netlist):
-\
-\
-\
-\
-\
-       
+ 
     lines = []
     skip_control_block = False
     
@@ -476,18 +468,7 @@ def find_components(circuit):
             components.append(name)
     return components
 
-def load_circuit_data(data_source, use_converted_netlists=True):
-\
-\
-\
-\
-\
-\
-\
-\
-\
-       
-                   
+def load_circuit_data(data_source, use_converted_netlists=True):              
     if isinstance(data_source, (str, Path)):
         data_path = Path(data_source)
         if not data_path.exists():
@@ -510,23 +491,23 @@ def load_circuit_data(data_source, use_converted_netlists=True):
             if use_converted_netlists and 'cleaned_netlist' in result:
                                                    
                 netlist = result['cleaned_netlist']
-                print(f"✅ Using converted netlist for {circuit_id}")
+                print(f"Using converted netlist for {circuit_id}")
             elif 'original_netlist_with_measurements' in result:
                                     
                 original = result['original_netlist_with_measurements']
                 netlist = convert_netlist_remove_n_nodes(original)
-                print(f"🔄 Converting netlist for {circuit_id}")
+                print(f"Converting netlist for {circuit_id}")
             elif 'cleaned_netlist' in result:
                                                                 
                 original = result['cleaned_netlist']
                 if 'N' in original and ('V_meas' in original or 'VI' in original):
                     netlist = convert_netlist_remove_n_nodes(original)
-                    print(f"🔄 Converting fallback netlist for {circuit_id}")
+                    print(f"Converting fallback netlist for {circuit_id}")
                 else:
                     netlist = original
-                    print(f"✅ Using existing clean netlist for {circuit_id}")
+                    print(f"Using existing clean netlist for {circuit_id}")
             else:
-                print(f"⚠️ No suitable netlist found for {circuit_id}")
+                print(f"No suitable netlist found for {circuit_id}")
                 continue
                 
             if circuit_id and netlist:
@@ -539,14 +520,14 @@ def load_circuit_data(data_source, use_converted_netlists=True):
                                                
                 if 'N' in netlist and ('V_meas' in netlist or 'VI' in netlist):
                     netlist = convert_netlist_remove_n_nodes(netlist)
-                    print(f"🔄 Converting netlist for {circuit_id}")
+                    print(f"Converting netlist for {circuit_id}")
                 else:
-                    print(f"✅ Using existing clean netlist for {circuit_id}")
+                    print(f"Using existing clean netlist for {circuit_id}")
             circuits[circuit_id] = netlist
     else:
         raise ValueError("Unknown data format")
     
-    print(f"📊 Loaded {len(circuits)} circuits (converted N-nodes: {use_converted_netlists})")
+    print(f"Loaded {len(circuits)} circuits (converted N-nodes: {use_converted_netlists})")
     return circuits
 
 def analyze_circuit(netlist, circuit_id):
