@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-\
-\
-\
-\
-   
-
 import json
 import os
 import shutil
@@ -12,43 +6,27 @@ from pathlib import Path
 import re
 import sympy as sp
 from sympy import symbols, Matrix, Eq, solve, simplify, Symbol, Function
+import glob
 
 
-
-def extract_symbols_from_matrix(matrix_eq):
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-       
-                                       
+def extract_symbols_from_matrix(matrix_eq):                                  
     all_symbols = matrix_eq.free_symbols
     all_functions = set()
-    
-                                                
+                                          
     unknowns_vector = matrix_eq.lhs
     for unknown in unknowns_vector:
         if hasattr(unknown, 'func'):
             all_functions.add(unknown)
-    
-                                                
+                                         
     def extract_functions(expr):
         funcs = set()
         if hasattr(expr, 'atoms'):
             for atom in expr.atoms(sp.Function):
                 funcs.add(atom)
         return funcs
-    
+
     all_functions.update(extract_functions(matrix_eq.rhs))
-    
-                        
+                  
     categorized = {
         's': None,
         'resistors': [],
@@ -92,29 +70,13 @@ def extract_symbols_from_matrix(matrix_eq):
     
     return categorized
 
-def extract_node_equations(matrix_equation):
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-       
-    
-                                                            
+def extract_node_equations(matrix_equation):                                                            
     unknowns_vector = matrix_equation.lhs
     right_side = matrix_equation.rhs
-    
-                                                          
+                                                        
     A = None
     b = None
-    
-                                                    
+                                               
     if hasattr(right_side, 'args') and len(right_side.args) > 0:
         for arg in right_side.args:
             if hasattr(arg, 'exp') and arg.exp == -1 and isinstance(arg.base, Matrix):
@@ -157,75 +119,40 @@ def extract_node_equations(matrix_equation):
                     coeff_str = str(coeff).replace('**', '^')
                     terms.append(f"({coeff_str})*{var}")
                 
-                lhs += coeff * var
-        
-                            
-        rhs = b[i]
-        
-                             
-        eq = Eq(lhs, rhs)
-        
-                                         
+                lhs += coeff * var          
+        rhs = b[i]    
+        eq = Eq(lhs, rhs)                              
         eq_str = " + ".join(terms).replace(" + -", " - ")
-        eq_str = f"{eq_str} = {rhs}"
-        
-                                 
+        eq_str = f"{eq_str} = {rhs}"                      
         eq_type = determine_equation_type(unknowns_vector[i], i)
-        
         equations.append((eq_type, eq_str, eq))
-    
     return equations
 
 def extract_node_equations_alternative(matrix_equation):
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-       
-    
     unknowns_vector = matrix_equation.lhs
     result_matrix = matrix_equation.rhs
-    
-                        
+                  
     if hasattr(result_matrix, 'doit'):
         result_matrix = result_matrix.doit()
-    
     equations = []
-    
+
     for i in range(len(unknowns_vector)):
         unknown = unknowns_vector[i]
         expr = result_matrix[i]
-        
         eq = Eq(unknown, expr)
-        eq_type = determine_equation_type(unknown, i) + " Solution"
-        
-                                                    
+        eq_type = determine_equation_type(unknown, i) + " Solution"                                           
         eq_str = f"{unknown} = {expr}"
-        
         equations.append((eq_type, eq_str, eq))
     
     return equations
 
-def determine_equation_type(variable, index):
-\
-\
-       
-    var_str = str(variable)
-    
-                              
+def determine_equation_type(variable, index):  
+    var_str = str(variable)                        
     if '(' in var_str:
         var_name = var_str.split('(')[0]
     else:
         var_name = var_str
-    
-                                
+                         
     if 'Vn' in var_name or 'V_n' in var_name:
         numbers = re.findall(r'\d+', var_name)
         if numbers:
@@ -243,10 +170,7 @@ def determine_equation_type(variable, index):
     else:
         return f"Equation {index + 1}"
 
-def print_equations(equations, show_symbolic=False):
-\
-\
-       
+def print_equations(equations, show_symbolic=False):       
     print("\nCircuit Equations:")
     print("=" * 60)
     
@@ -256,51 +180,20 @@ def print_equations(equations, show_symbolic=False):
         if show_symbolic:
             print(f"  Symbolic: {eq_obj}")
 
-def process_circuit_matrix(matrix_eq_str):
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-       
-    
-    print("Analyzing circuit matrix equation...")
-    
-                                                                      
-                                                  
-    
-                                              
-                                                                                        
+def process_circuit_matrix(matrix_eq_str):                                                                                  
     symbol_pattern = r'\b([RLC][A-Za-z]*\d+|[A-Z][a-z]*\d*|s)\b'
-    found_symbols = set(re.findall(symbol_pattern, matrix_eq_str))
-    
-                                                              
-                                                                                  
+    found_symbols = set(re.findall(symbol_pattern, matrix_eq_str))                                                                             
     function_pattern = r'\b(Vn[A-Za-z]*\d+|I[A-Za-z]*\d+)\b'
-    found_functions = set(re.findall(function_pattern, matrix_eq_str))
-    
-                                   
-    namespace = {}
-    
-              
-    namespace['s'] = sp.Symbol('s')
-    
-                              
+    found_functions = set(re.findall(function_pattern, matrix_eq_str))                               
+    namespace = {}   
+    namespace['s'] = sp.Symbol('s')                        
     for sym_name in found_symbols:
         if sym_name != 's':
             namespace[sym_name] = sp.Symbol(sym_name, positive=True)
-    
-                             
+                        
     for func_name in found_functions:
         namespace[func_name] = sp.Function(func_name)
-    
-                                        
+                               
     namespace.update({
         'Matrix': Matrix,
         'Eq': Eq,
@@ -309,12 +202,8 @@ def process_circuit_matrix(matrix_eq_str):
         'symbols': symbols,
         'Function': Function
     })
-    
-    try:
-                                                        
-        matrix_eq = eval(matrix_eq_str, namespace)
-        
-                               
+    try:                                                 
+        matrix_eq = eval(matrix_eq_str, namespace)                     
         symbols_found = extract_symbols_from_matrix(matrix_eq)
         print(f"\nFound symbols:")
         print(f"  Frequency variable: s")
@@ -325,8 +214,7 @@ def process_circuit_matrix(matrix_eq_str):
         if symbols_found['inductors']:
             print(f"  Inductors: {[str(l) for l in symbols_found['inductors']]}")
         print(f"  Unknowns: {[str(u) for u in symbols_found['unknowns']]}")
-        
-                                  
+                         
         try:
             print("\nExtracting circuit equations...")
             equations = extract_node_equations(matrix_eq)
@@ -350,29 +238,7 @@ def process_circuit_matrix(matrix_eq_str):
         raise
 
                                      
-def analyze_circuit(matrix_eq_str):
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-\
-       
+def analyze_circuit(matrix_eq_str):    
     try:
         equations = process_circuit_matrix(matrix_eq_str)
         print_equations(equations)
@@ -382,22 +248,7 @@ def analyze_circuit(matrix_eq_str):
         return None
 
 
-
-
-
-
-
-
-
-
-
-
-
 def extract_transfer_function_components(tf_name):
-\
-\
-\
-       
     if '_to_' in tf_name:
         parts = tf_name.split('_to_')
         return parts[0], parts[1]
@@ -411,9 +262,7 @@ def create_nodal_analysis_question():
                                                                 
     return "What is the nodal analysis of this circuit in the s-domain? Provide the matrix equation in the form x = A^(-1)b."
 
-def extract_variable_name_from_equation_type(equation_type):
-                                                              
-                                                                               
+def extract_variable_name_from_equation_type(equation_type):                                                                    
     if "current" in equation_type:
                                                                     
         parts = equation_type.split()
@@ -445,9 +294,6 @@ def create_individual_equation_question(equation_type):
 
 
 def is_valid_data(data, data_type):
-\
-\
-       
     if isinstance(data, str):
         error_patterns = [
             "TIMEOUT_OR_ERROR",
@@ -462,13 +308,7 @@ def is_valid_data(data, data_type):
     return True
 
 def copy_circuit_image(circuit_id, target_image_path, input_dir):
-\
-\
-\
-       
-    import glob
-    
-                               
+                         
     input_dir = Path(input_dir)
 
                                                                             
@@ -496,10 +336,7 @@ def copy_circuit_image(circuit_id, target_image_path, input_dir):
     print(f"ERROR: No images found at all!")
     return False
 
-def create_symbolic_equations_dataset(input_dir='datasets/mllm_level1_v7'):
-                                              
-    
-                        
+def create_symbolic_equations_dataset(input_dir='datasets/mllm_level1_v7'):                   
     input_dir = Path(input_dir)
     json_file = input_dir / 'symbolic_equations.json'
     if not json_file.exists():
@@ -507,9 +344,7 @@ def create_symbolic_equations_dataset(input_dir='datasets/mllm_level1_v7'):
         return
     
     with open(json_file, 'r') as f:
-        data = json.load(f)
-    
-                                    
+        data = json.load(f)                           
     dataset_dir = Path('datasets/symbolic_level15_27')
     dataset_dir.mkdir(exist_ok=True)
     
@@ -526,9 +361,7 @@ def create_symbolic_equations_dataset(input_dir='datasets/mllm_level1_v7'):
     
     for result in results:
         circuit_id = result['circuit_id']
-        cleaned_netlist = result.get('cleaned_netlist', '')
-        
-                                    
+        cleaned_netlist = result.get('cleaned_netlist', '')                         
         transfer_functions = result.get('transfer_functions', {})
         for tf_name, tf_equation in transfer_functions.items():
             total_transfer_functions += 1
@@ -537,84 +370,66 @@ def create_symbolic_equations_dataset(input_dir='datasets/mllm_level1_v7'):
                 skipped_transfer_functions += 1
                 print(f"Skipping transfer function {tf_name} for circuit {circuit_id}: contains error")
                 continue
-            
-                                    
+                                  
             question_folder = dataset_dir / f'q{question_counter}'
-            question_folder.mkdir(exist_ok=True)
-            
-                                            
+            question_folder.mkdir(exist_ok=True)                              
             source, dest = extract_transfer_function_components(tf_name)
             if not source or not dest:
                 source, dest = "input", "output"
-            
-                                  
+                     
             question_text = create_transfer_function_question(source, dest, circuit_id)
             question_file = question_folder / f'q{question_counter}_question.txt'
             with open(question_file, 'w') as f:
                 f.write(question_text)
-            
-                                
+                  
             answer_file = question_folder / f'q{question_counter}_ta.txt'
             with open(answer_file, 'w') as f:
                 f.write(tf_equation)
-            
-                                           
+                             
             netlist_file = question_folder / f'q{question_counter}_netlist.txt'
             with open(netlist_file, 'w') as f:
                 f.write(cleaned_netlist)
-            
-                                                               
+                                                
             target_image = question_folder / f'q{question_counter}_image.png'
             if copy_circuit_image(circuit_id, target_image, input_dir):
                 print(f"Created q{question_counter}: Transfer function {tf_name} for circuit {circuit_id}")
             else:
                 missing_images += 1
-            
+
             question_counter += 1
-        
-                                                                               
+                                                                    
         nodal_equations = result.get('nodal_equations', {})
         s_domain = nodal_equations.get('s_domain', '')
         
         if s_domain:
             total_nodal_analysis_circuits += 1
-            
             if not is_valid_data(s_domain, 'nodal_analysis'):
                 skipped_nodal_analysis += 1
                 print(f"Skipping nodal analysis for circuit {circuit_id}: contains error")
                 continue
-            
-            try:
-                                                                                 
+            try:                                                               
                 equations = process_circuit_matrix(s_domain)
-                
                 if equations:
                     print(f"Extracted {len(equations)} equations from circuit {circuit_id}")
                     total_nodal_equations += len(equations)
-                    
-                                                                            
+                                                       
                     for eq_type, eq_str, eq_obj in equations:
                                                 
                         question_folder = dataset_dir / f'q{question_counter}'
-                        question_folder.mkdir(exist_ok=True)
-                        
-                                                                                
+                        question_folder.mkdir(exist_ok=True)                                                        
                         question_text = create_individual_equation_question(eq_type)
                         question_file = question_folder / f'q{question_counter}_question.txt'
                         with open(question_file, 'w') as f:
                             f.write(question_text)
-                        
-                                                                             
+                                                 
                         answer_file = question_folder / f'q{question_counter}_ta.txt'
                         with open(answer_file, 'w') as f:
                             f.write(eq_str)
-                        
-                                                                                                  
+                                                                      
                         netlist_file = question_folder / f'q{question_counter}_netlist.txt'
                         with open(netlist_file, 'w') as f:
                             f.write(cleaned_netlist)
-                        
-                                                                                          
+                                                              
                         target_image = question_folder / f'q{question_counter}_image.png'
                         if copy_circuit_image(circuit_id, target_image, input_dir):
                             print(f"Created q{question_counter}: {eq_type} equation for circuit {circuit_id}")
@@ -625,7 +440,6 @@ def create_symbolic_equations_dataset(input_dir='datasets/mllm_level1_v7'):
                 else:
                     print(f"No equations extracted from circuit {circuit_id}")
                     skipped_nodal_analysis += 1
-                    
             except Exception as e:
                 print(f"Error extracting equations from circuit {circuit_id}: {e}")
                 skipped_nodal_analysis += 1

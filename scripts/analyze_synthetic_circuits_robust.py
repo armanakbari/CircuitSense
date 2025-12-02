@@ -8,8 +8,6 @@ import multiprocessing
 import time
 from functools import partial
 import sympy as sp
-
-
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -24,6 +22,7 @@ def _multiprocessing_target(queue, func_data):
     except Exception as e:
         queue.put(('error', str(e)))
 
+# sympy under lcapy can get stuck indefinitely on hard integrals or simplifications. This will run the actual analysis function in a separate process with a timeout.
 def run_with_timeout(func, args, timeout_seconds):
                                                                               
     queue = multiprocessing.Queue()
@@ -47,6 +46,7 @@ def run_with_timeout(func, args, timeout_seconds):
     else:
         return None, result
 
+# this function will run the actual analysis function in a separate process with a timeout.
 def safe_computation_mp(func, args, timeout_seconds=30, description="computation"):
                                                                 
     print(f"🔧 Starting {description} (timeout: {timeout_seconds}s)...")
@@ -89,23 +89,15 @@ def _compute_transfer_function(circuit, vs_nodes, comp):
     tf = str(circuit.transfer(vs_nodes, comp))
     return limit_ad_to_infinity_str(tf)
 
-def _compute_mna_analysis(circuit, domain='t'):
-                                                                     
-    try:
-                                                                            
-        print(f"Creating {domain}-domain circuit for MNA...")
+def _compute_mna_analysis(circuit, domain='t'):                                                           
+    try:                                                                    
         if domain == 's':
             circuit_domain = circuit.laplace()
         else:
-            circuit_domain = circuit
-            
-        print(f"Creating MNA object...")
-                                                                           
+            circuit_domain = circuit                                                           
         try:
             mna_obj = mna.MNA(circuit_domain, solver_method='scipy')
         except Exception as mna_creation_error:
-                                                           
-            print(f"scipy solver failed, trying alternative methods...")
             try:
                 mna_obj = mna.MNA(circuit_domain, solver_method='numpy')
             except Exception:
@@ -113,18 +105,10 @@ def _compute_mna_analysis(circuit, domain='t'):
                     mna_obj = mna.MNA(circuit_domain, solver_method='sympy')
                 except Exception as final_error:
                     return f"MNA Creation Error: Failed with all solver methods. Original: {str(mna_creation_error)}, Final: {str(final_error)}"
-        
-        print(f"Getting matrix equations...")
                               
         matrix_eqs = mna_obj.matrix_equations()
-        
         if matrix_eqs is None:
-            return f"MNA Error: matrix_equations() returned None"
-            
-        print(f"Converting to readable form...")
-        
-                                                                                  
-                                                                                      
+            return f"MNA Error: matrix_equations() returned None"                                                                       
         try:
             basic_repr = str(matrix_eqs)
         except Exception as basic_error:
@@ -302,6 +286,10 @@ def _convert_matrix_to_readable(matrix_eqs, mna_obj):
         except:
             return f"Conversion Error: {str(e)}\nMatrix form:\n{str(matrix_eqs)}"
 
+# lcapy's spice syntax is a bit different from the standard spice syntax. This function will clean the netlist to be compatible with lcapy.
+# it will remove simulation commands like .ac .tran .control which are for numerical analysis with ngspice.
+# standardizes dependent sources E, G, F, H 
+# sanitizes node names (replacing special characters with underscores)
 def clean_netlist_for_lcapy(spice_netlist):
  
     lines = []
@@ -472,22 +460,17 @@ def load_circuit_data(data_source, use_converted_netlists=True):
     if isinstance(data_source, (str, Path)):
         data_path = Path(data_source)
         if not data_path.exists():
-            raise FileNotFoundError(f"File not found: {data_path}")
-            
+            raise FileNotFoundError(f"File not found: {data_path}") 
         with open(data_path, 'r') as f:
             data = json.load(f)
     else:
         data = data_source
-    
-    circuits = {}
-    
-                                      
+    circuits = {}                              
     if 'results' in data:
                                                 
         results = data['results']
         for result in results:
             circuit_id = result.get('circuit_id')
-            
             if use_converted_netlists and 'cleaned_netlist' in result:
                                                    
                 netlist = result['cleaned_netlist']
@@ -509,12 +492,10 @@ def load_circuit_data(data_source, use_converted_netlists=True):
             else:
                 print(f"No suitable netlist found for {circuit_id}")
                 continue
-                
             if circuit_id and netlist:
                 circuits[circuit_id] = netlist
                 
-    elif isinstance(data, dict):
-                                                          
+    elif isinstance(data, dict):                                          
         for circuit_id, netlist in data.items():
             if use_converted_netlists:
                                                
@@ -697,10 +678,7 @@ def analyze_circuit(netlist, circuit_id):
         return {'circuit_id': circuit_id, 'error': f'Exception: {str(e)}'}
 
 def main():
-                                                                          
-                                                            
-    pass
-    
+
     parser = argparse.ArgumentParser(description="Analyze synthetic circuits using MNA with robust timeout handling")
     parser.add_argument('--labels_file', default="datasets/equations_2/labels.json", 
                        help="Path to labels.json file or symbolic_equations.json with converted netlists")
@@ -714,15 +692,13 @@ def main():
     parser.add_argument('--converted_file', 
                        help='Path to JSON file with converted netlists (e.g., symbolic_equations_no_n_nodes.json)')
     args = parser.parse_args()
-    
-                                 
+                             
     if args.converted_file:
         data_file = args.converted_file
         print(f"Using converted netlists from: {data_file}")
     else:
         data_file = args.labels_file
         print(f"Using data from: {data_file}")
-    
     if not Path(data_file).exists():
         print(f"File not found: {data_file}")
         return
@@ -736,7 +712,6 @@ def main():
     
     circuit_items = list(circuits.items())
     
-    
     results = []
     successful = 0
     skipped = 0
@@ -748,14 +723,10 @@ def main():
     print(f"Fast mode: {'ON' if args.fast_mode else 'OFF'}")
     print(f"Using multiprocessing timeouts for robust analysis")
     print(f"Focus: Clean netlists should improve lcapy compatibility")
-    
-                                
+                     
     error_types = {}
-    
     for i, (circuit_id, netlist) in enumerate(circuit_items, 1):
-        print(f"\n{'='*60}")
         print(f"[{i}/{len(circuit_items)}] Processing {circuit_id}...")
-        
         result = analyze_circuit(netlist, circuit_id)
         
         if result is None:
@@ -770,17 +741,14 @@ def main():
             failed += 1
             results.append(result)
             error_msg = result['error']
-            
-                                             
+                                         
             error_key = error_msg.split(':')[0] if ':' in error_msg else error_msg[:50]
             error_types[error_key] = error_types.get(error_key, 0) + 1
             
             print(f"{circuit_id} - Error: {error_msg}")
         else:
             successful += 1
-            results.append(result)
-            
-                                                         
+            results.append(result)                                          
             metrics = result.get('complexity_metrics', {})
             score = metrics.get('complexity_score', 0)
             nodes = metrics.get('num_nodes', 0)
@@ -791,24 +759,18 @@ def main():
             mna_success = sum(1 for v in result.get('nodal_equations', {}).values() 
                             if v not in ["TIMEOUT_OR_ERROR", "SKIPPED_TOO_COMPLEX", "SKIPPED_NO_TRANSFER_FUNCTIONS"])
             
-            print(f"{circuit_id} - Success (complexity: {score}, nodes: {nodes}, TF: {tf_success}, MNA: {mna_success})")
-            
-                                      
+            print(f"{circuit_id} - Success (complexity: {score}, nodes: {nodes}, TF: {tf_success}, MNA: {mna_success})")                  
             if args.show_samples and 'transfer_functions' in result:
                 for tf_name, tf_expr in result['transfer_functions'].items():
                     if tf_expr not in ["TIMEOUT_OR_ERROR", "SKIPPED_TOO_COMPLEX", "SKIPPED_NO_TRANSFER_FUNCTIONS"]:
-                        print(f"  📈 Sample: {tf_name}: {tf_expr}")
-                        break
-    
-                                   
+                        print(f"  Sample: {tf_name}: {tf_expr}")
+                        break                 
     timeout_count = sum(1 for r in results 
                        if any('TIMEOUT_OR_ERROR' in str(v) 
                              for v in r.get('transfer_functions', {}).values()) or
                           any('TIMEOUT_OR_ERROR' in str(v)
                              for v in r.get('nodal_equations', {}).values()))
-    
     skipped_complex = sum(1 for r in results if r.get('skipped', False))
-    
                          
     if results:
         complexity_scores = [r.get('complexity_metrics', {}).get('complexity_score', 0) 
@@ -863,7 +825,7 @@ def main():
         json.dump(output, f, indent=2)
     
     print(f"\n{'='*60}")
-    print(f"📊 Final Analysis Summary:")
+    print(f"   Final Analysis Summary:")
     print(f"   Successful circuits: {successful}")
     print(f"   ransfer functions: {total_tf_success}")
     print(f"   MNA equations: {total_mna_success}")
@@ -879,7 +841,7 @@ def main():
         for error_type, count in sorted(error_types.items(), key=lambda x: x[1], reverse=True):
             print(f"   • {error_type}: {count}")
     
-    print(f"   💾 Results saved to {args.output_file}")
+    print(f"   Results saved to {args.output_file}")
 
 if __name__ == "__main__":
     main()
