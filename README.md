@@ -61,11 +61,9 @@ PYTHONPATH=. python main.py \
   --derive_equations \
   --show_sample_equations
 
-# Example 3: questions-only mode (implies derive + generate_symbolic_questions)
-PYTHONPATH=. python main.py \
-  --note training_data \
-  --gen_num 30 \
-  --questions_only
+# Example 3: get the dataset folder from Example 2
+PYTHONPATH=. python scripts/create_symbolic_equations_dataset.py \
+  --input_dir datasets/symbolic_circuits
 
 # Example 4: use existing data (skip generation) and derive equations fast
 PYTHONPATH=. python main.py \
