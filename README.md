@@ -65,13 +65,7 @@ PYTHONPATH=. python main.py \
 PYTHONPATH=. python scripts/create_symbolic_equations_dataset.py \
   --input_dir datasets/symbolic_circuits
 
-# Example 4: use existing data (skip generation) and derive equations fast
-PYTHONPATH=. python main.py \
-  --note existing_data \
-  --skip_generation \
-  --derive_equations \
-  --fast_analysis \
-  --max_components 10
+
 ```
 
 Key outputs are written under `datasets/<note>/`, including `labels.json` and, when enabled, `symbolic_equations.json`.
@@ -131,6 +125,19 @@ python scripts/analyze_synthetic_circuits_robust.py \
   --output_file datasets/grid_v11_240831/symbolic_equations.json \
   --max_circuits 50
 ```
+
+
+## Evaluation
+
+The provided evaluation script in `evalution` folder is for evaluating synthetic generation answers. The script sccepts three command-line arguments:
+```bash
+python benchmark_symbolic_equations.py [mode] [max_questions] [dataset_path]
+```
+The mode can be `full`, `inference`, or `evaluation`. Mode `full` runs the model on the questions and immediately grades them. However, mode `inference` generates answers and saves them to `.txt` files in the question folders (it does not grade them) and mode `evaluation` read the saved responses (from inference only mode) and grades them.
+```bash
+python evaluation/benchmark_symbolic_equations.py full 10
+```
+
 
 This repository is based on [MAPS: Advancing Multi-modal Reasoning in Expert-level Physical Science](https://arxiv.org/abs/2501.10768). 
 

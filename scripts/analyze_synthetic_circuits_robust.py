@@ -166,13 +166,11 @@ def debug_mna_object(netlist_string):
         traceback.print_exc()
         return None, None
 
+# the raw MNA output is a matrix object. this is parse it and convert it to a readable format.
 def _convert_matrix_to_readable(matrix_eqs, mna_obj):
                                                          
-    try:
-                                                                        
-        unknowns = None
-        
-                                              
+    try:                                                               
+        unknowns = None                                  
         if hasattr(mna_obj, 'unknowns'):
             unknowns = mna_obj.unknowns
         elif hasattr(mna_obj, 'x'):
@@ -181,54 +179,40 @@ def _convert_matrix_to_readable(matrix_eqs, mna_obj):
             unknowns = mna_obj.variables
         elif hasattr(mna_obj, '_unknowns'):
             unknowns = mna_obj._unknowns
-        else:
-                                                         
+        else:                                          
             if hasattr(matrix_eqs, 'lhs') and hasattr(matrix_eqs.lhs, 'free_symbols'):
                 unknowns = list(matrix_eqs.lhs.free_symbols)
-            elif hasattr(matrix_eqs, 'args') and len(matrix_eqs.args) >= 2:
-                                                                           
+            elif hasattr(matrix_eqs, 'args') and len(matrix_eqs.args) >= 2:                                                        
                 unknowns_vec = matrix_eqs.args[0]
                 if hasattr(unknowns_vec, '__iter__'):
-                    unknowns = list(unknowns_vec)
-        
-                                                              
-        if unknowns is None:
-                                            
+                    unknowns = list(unknowns_vec)                                              
+        if unknowns is None:                             
             try:
                 n_vars = matrix_eqs.A.cols if hasattr(matrix_eqs, 'A') else len(str(matrix_eqs).split(','))
                 unknowns = [f"x{i}" for i in range(n_vars)]
             except:
                 return f"Could not determine unknowns and matrix structure.\nMatrix form:\n{str(matrix_eqs)}"
-        
-                                                    
+                                    
         if hasattr(matrix_eqs, 'A') and hasattr(matrix_eqs, 'b'):
             A_matrix = matrix_eqs.A
             b_vector = matrix_eqs.b
-        else:
-                                                 
+        else:                                  
             return f"Matrix structure not in expected A*x = b format.\nMatrix form:\n{str(matrix_eqs)}"
-        
         equations = []
-        
-                                                        
+                                          
         for i in range(A_matrix.rows):
-            lhs_terms = []
-            
-                                        
+            lhs_terms = []                          
             for j in range(min(A_matrix.cols, len(unknowns))):
                 try:
                     coeff = A_matrix[i, j]
-                    
-                                                        
+                                 
                     if hasattr(coeff, 'is_zero') and coeff.is_zero:
                         continue
                     if str(coeff) == '0' or coeff == 0:
-                        continue
-                        
+                        continue  
                     unknown = str(unknowns[j])
                     coeff_str = str(coeff)
-                    
-                                                         
+                                 
                     if coeff_str == '1':
                         lhs_terms.append(f"{unknown}")
                     elif coeff_str == '-1':
@@ -240,21 +224,17 @@ def _convert_matrix_to_readable(matrix_eqs, mna_obj):
                         else:
                             lhs_terms.append(f"{coeff_str}*{unknown}")
                             
-                except Exception as coeff_error:
-                                                   
+                except Exception as coeff_error:                            
                     print(f"Warning: Skipping coefficient at [{i},{j}]: {coeff_error}")
                     continue
-            
-                                   
+                  
             try:
-                rhs = str(b_vector[i])
-                                             
+                rhs = str(b_vector[i])                           
                 if rhs == '0':
                     rhs = '0'
             except Exception as rhs_error:
                 rhs = f"<RHS_ERROR: {rhs_error}>"
-            
-                                   
+                 
             if lhs_terms:
                 lhs = " + ".join(lhs_terms).replace("+ -", "- ")
                                                
@@ -269,10 +249,8 @@ def _convert_matrix_to_readable(matrix_eqs, mna_obj):
         else:
             return f"Matrix form (no readable equations generated):\n{str(matrix_eqs)}"
         
-    except Exception as e:
-                                                 
-        try:
-                                             
+    except Exception as e:                                             
+        try:                                 
             mna_attrs = [attr for attr in dir(mna_obj) if not attr.startswith('_')]
             matrix_attrs = [attr for attr in dir(matrix_eqs) if not attr.startswith('_')]
             
