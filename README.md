@@ -19,6 +19,7 @@ For further information, please refer to our [preprint](https://arxiv.org/pdf/25
 [[🌐 Webpage](https://circuitsense-benchmark.github.io)] [[🤗 Hugginface Dataset](https://huggingface.co/datasets/armanakbari4/CircuitSense)] [[📑 Paper](https://arxiv.org/pdf/2509.22339)]
 
 ## 💥 News
+* **[2025.10.17]** 🚀 CircuitSense (full version) got accepted in ICLR 2026 🇧🇷!
 * **[2025.10.17]** 🚀 CircuitSense got accepted in [NeurIPS 2025 MATH-AI, The 5th Workshop on Mathematical Reasoning and AI](https://mathai2025.github.io) and will be presented in San Diego Convention Center on December 6th.
 * **[2025.09.29]** 🔥 We release the code for our hierarchical synthetic generation pipeline.
 * **[2025.09.25]** The [arxiv paper](https://arxiv.org/pdf/2509.22339) is online.
